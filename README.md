@@ -27,32 +27,32 @@
 ### 2.1 逻辑拓扑图
 ```mermaid
 graph TD
-    User[安全分析师] -->|HTTPS| Frontend[前端指挥舱 (React/Vite)]
+    User[Security Analyst] -->|HTTPS| Frontend[React Frontend]
     
-    subgraph "业务中台 (Business Layer)"
-        Frontend -->|REST API| Backend[业务后端 (Spring Boot)]
+    subgraph Business["Business Layer"]
+        Frontend -->|REST API| Backend[Spring Boot]
         Backend -->|WebSocket| Frontend
-        Backend -->|MySQL| DB[(业务数据库)]
-        Backend -->|Redis| Cache[(指令队列缓存)]
+        Backend -->|MySQL| DB[(Database)]
+        Backend -->|Redis| Cache[(Cache)]
     end
     
-    subgraph "智能分析层 (AI Analysis Layer)"
-        Backend -->|JSON| LLM[大语言模型 (GenAI)]
+    subgraph AI["AI Analysis Layer"]
+        Backend -->|JSON| LLM[GenAI LLM]
         LLM -->|Markdown| Backend
     end
 
-    subgraph "感知与响应层 (Sensor & Response Layer)"
-        ML_IDS[Python AI 引擎 (TransecGAN)] -->|HTTP POST| Backend
-        Rule_IDS[Snort 规则引擎] -->|HTTP POST| Backend
-        HIDS_Agent[HIDS 主机探针] -->|HTTP POST (心跳)| Backend
-        Backend -->|Command Queue| HIDS_Agent
-        HIDS_Agent -->|Shell Exec| Firewall[系统防火墙 (Netsh/Iptables)]
+    subgraph Sensor["Sensor & Response Layer"]
+        ML_IDS[TransecGAN Engine] -->|HTTP| Backend
+        Rule_IDS[Snort IDS] -->|HTTP| Backend
+        HIDS[HIDS Agent] -->|Heartbeat| Backend
+        Backend -->|Command| HIDS
+        HIDS -->|Execute| Firewall[Firewall]
     end
     
-    subgraph "信任锚点 (Trust Layer)"
-        Backend -->|Fabric Gateway SDK| Peer[Fabric Peer 节点]
-        Peer -->|gRPC| Orderer[Ordering Service]
-        Peer -->|Ledger| CouchDB[(世界状态库)]
+    subgraph Trust["Trust Layer - Blockchain"]
+        Backend -->|Fabric SDK| Peer[Fabric Peer]
+        Peer -->|gRPC| Orderer[Orderer]
+        Peer -->|Ledger| CouchDB[(CouchDB)]
     end
 ```
 
