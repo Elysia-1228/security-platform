@@ -1,15 +1,15 @@
-# Zhilian2025 网络安全态势感知与主动防御平台
+# 🛡️ 御链天鉴 - 网络安全态势感知与主动防御平台
 
 > **版本**: v1.2.1 (TransecGAN + Hyperledger Fabric + AI Report Engine)  
 > **状态**: 🟢 生产就绪 (Production Ready) | ✨ Feature Updated  
-> **文档日期**: 2025-12-12  
+> **文档日期**: 2025-12-14  
 > **核心架构**: Spring Boot 微服务 + React 可视化 + TransecGAN 深度学习 + Hyperledger Fabric 区块链 + GenAI 决策支持
 
 ---
 
 ## 1. 项目概述 (Executive Summary)
 
-**Zhilian2025** 是一款企业级下一代网络安全平台，致力于解决传统入侵检测系统 (IDS) 仅能“旁路告警”无法“实时阻断”的痛点。本项目构建了从**全流量感知**到**AI 智能研判**，再到**端点主动防御**与**区块链存证**的完整闭环体系。
+**御链天鉴** 是一款企业级下一代网络安全平台，致力于解决传统入侵检测系统 (IDS) 仅能“旁路告警”无法“实时阻断”的痛点。本项目构建了从**全流量感知**到**AI 智能研判**，再到**端点主动防御**与**区块链存证**的完整闭环体系。
 
 ### 1.1 核心价值
 *   **零日威胁免疫**: 摒弃传统基于特征库的检测模式，采用 **TransecGAN** (Transformer-Encoder GAN) 模型，有效识别未知 Zero-day 攻击。
@@ -309,7 +309,7 @@ graph TD
 ## 9. 联系方式与许可证
 
 *   **许可证**: MIT License
-*   **维护团队**: Zhilian Security Team
-*   **反馈邮箱**: support@zhilian.com
+*   **维护团队**: 御链天鉴安全团队
+*   **反馈邮箱**: support@yulianjian.com
 
-*Copyright © 2025 Zhilian Security. All Rights Reserved.*
+*Copyright © 2025 御链天鉴. All Rights Reserved.*
