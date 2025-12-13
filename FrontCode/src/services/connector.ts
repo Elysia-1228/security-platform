@@ -19,7 +19,11 @@ const ENDPOINTS = {
   THREAT_BLOCK: (id: string) => `/threats/${id}/block`,     // 阻断攻击源 IP (POST)
   THREAT_UNBLOCK: (id: string) => `/threats/${id}/unblock`, // 解封攻击源 IP (POST)
   THREAT_RESOLVE: (id: string) => `/threats/${id}/resolve`, // 标记事件已解决 (POST)
+  THREAT_BLOCKED_IPS: '/threats/blocked-ips',             // 获取当前被封禁的 IP 列表 (GET)
+  THREAT_MANUAL_BLOCK: '/threats/manual-block',           // 手动封禁 IP (POST)
+  THREAT_MANUAL_UNBLOCK: '/threats/manual-unblock',       // 手动解封 IP (POST)
   THREAT_HISTORY: '/analysis/alert',                        // 获取历史威胁记录 (GET)
+  AI_TRACE: '/analysis/ai-trace',                           // AI 威胁溯源分析 (POST)
 
   // --- 数据采集配置 ---
   CONFIG_UPDATE: '/collection/config',  // Deprecated?
@@ -158,6 +162,12 @@ export const AnalysisService = {
       params: { pageNum, pageSize }
     });
     return response.data?.data?.records || response.data?.data || [];
+  },
+
+  // 新增趋势统计接口
+  getTrend: async (range: string = '24h') => {
+    const response = await api.get('/analysis/trend', { params: { range } });
+    return response.data?.data || [];
   }
 };
 
@@ -296,6 +306,22 @@ export const ThreatService = {
     return api.post(ENDPOINTS.THREAT_RESOLVE(threatId));
   },
 
+  // 获取当前被封禁的 IP 列表
+  getBlockedIps: async (): Promise<string[]> => {
+    const response = await api.get(ENDPOINTS.THREAT_BLOCKED_IPS);
+    return response.data?.data || [];
+  },
+
+  // 手动封禁 IP
+  manualBlock: async (ip: string): Promise<void> => {
+    return api.post(ENDPOINTS.THREAT_MANUAL_BLOCK, null, { params: { ip } });
+  },
+
+  // 手动解封 IP
+  manualUnblock: async (ip: string): Promise<void> => {
+    return api.post(ENDPOINTS.THREAT_MANUAL_UNBLOCK, null, { params: { ip } });
+  },
+
   // 获取历史数据
   getHistory: async (): Promise<ThreatEvent[]> => {
     try {
@@ -313,24 +339,23 @@ export const ThreatService = {
         
         // 适配器逻辑：将后端 Entity 转换为前端 ThreatEvent
         return rawList.map((item: any) => {
-            // 优先使用独立字段，如果没有则从 impactScope 解析
-            let type = item.attackType || 'Unknown';
-            let src = item.sourceIp || 'Unknown';
-            let dst = item.targetIp || 'Unknown';
+            // 解析 impactScope 字段 (格式: "src -> dst | type")
+            let type = 'Unknown';
+            let src = 'Unknown';
+            let dst = 'Unknown';
             
-            // 如果独立字段为空，尝试从 impactScope 解析 (格式: "src -> dst | type")
-            if ((type === 'Unknown' || src === 'Unknown') && item.impactScope) {
+            if (item.impactScope) {
                 try {
                     const parts = item.impactScope.split('|');
-                    if (parts.length > 1 && type === 'Unknown') {
+                    if (parts.length > 1) {
                         type = parts[1].trim();
                     }
                     
                     const session = parts[0].trim();
                     const ips = session.split('->');
                     if (ips.length > 1) {
-                        if (src === 'Unknown') src = ips[0].trim().split(':')[0];
-                        if (dst === 'Unknown') dst = ips[1].trim().split(':')[0];
+                        src = ips[0].trim().split(':')[0];
+                        dst = ips[1].trim().split(':')[0];
                     }
                 } catch (e) {
                     // ignore parse error
@@ -352,13 +377,46 @@ export const ThreatService = {
                 timestamp: item.occurTime ? item.occurTime.replace('T', ' ') : '',
                 riskLevel: riskLevel as any,
                 status: 'Pending', // 默认状态
-                details: item.details || item.impactScope || '' // 优先使用 details 字段
+                details: item.impactScope // 将原始 scope 作为详情展示
             };
         });
     } catch (error) {
         console.error("Failed to fetch history:", error);
         return [];
     }
+  },
+
+  // AI 威胁溯源分析
+  traceThreat: async (payload: { question: string, top_k: number }): Promise<any> => {
+    const response = await api.post(ENDPOINTS.AI_TRACE, payload);
+    return response.data; // 返回 { code, msg, data }
+  }
+};
+
+/**
+ * AI 智能报告服务
+ */
+export const ReportService = {
+  // 调用后端生成 AI 报告
+  generate: async (type: string): Promise<string> => {
+    const response = await api.post('/report/generate', { type });
+    return response.data?.data;
+  },
+  
+  // 获取历史报告
+  getHistory: async () => {
+    const response = await api.get('/report/history');
+    return response.data?.data || [];
+  },
+
+  // 删除历史报告
+  delete: async (id: number) => {
+    return api.delete(`/report/history/${id}`);
+  },
+
+  // 重命名历史报告
+  rename: async (id: number, newTitle: string) => {
+    return api.put(`/report/history/${id}`, { title: newTitle });
   }
 };
 
@@ -451,13 +509,12 @@ export class IDSSocket {
         // 映射 RiskLevel
         let riskLevel = 'Medium';
         if (rawData.threatLevel) {
-            const level = Number(rawData.threatLevel);
-            if (level === 1) {
-                riskLevel = 'Low';
-            } else if (level === 2) {
-                riskLevel = 'Medium';
-            } else if (level >= 3) {
-                riskLevel = 'High';
+            switch (Number(rawData.threatLevel)) {
+                case 1: riskLevel = 'Low'; break;
+                case 2: riskLevel = 'Medium'; break;
+                case 3: riskLevel = 'High'; break;
+                case 4: riskLevel = 'High'; break;
+                default: riskLevel = 'Medium';
             }
         }
 

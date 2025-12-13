@@ -69,6 +69,14 @@ public class AnalysisServiceImpl implements AnalysisService {
         return threatAlert;
     }
 
+    @Override
+    public potentialThreatAlert queryAlertByThreatId(String threatId) {
+        if (threatId == null) {
+            return null;
+        }
+        return analysisMapper.queryAlertByThreatId(threatId);
+    }
+
     /**
      * 保存并上链告警
      */
@@ -94,6 +102,24 @@ public class AnalysisServiceImpl implements AnalysisService {
         } catch (Exception e) {
             // 上链失败不应影响本地存储，记录日志即可
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public List<java.util.Map<String, Object>> getTrendStats(String timeRange) {
+        LocalDateTime endTime = LocalDateTime.now();
+        LocalDateTime startTime;
+
+        if ("7d".equals(timeRange)) {
+            startTime = endTime.minusDays(7);
+            return analysisMapper.countAlertsByDay(startTime, endTime);
+        } else if ("30d".equals(timeRange)) {
+            startTime = endTime.minusDays(30);
+            return analysisMapper.countAlertsByDay(startTime, endTime);
+        } else {
+            // Default 24h
+            startTime = endTime.minusHours(24);
+            return analysisMapper.countAlertsByHour(startTime, endTime);
         }
     }
 }

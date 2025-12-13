@@ -5,7 +5,7 @@
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-.vscode/
+# .vscode/  # 已取消忽略，用于保存VS Code任务配置
 .idea/
 *.swp
 *.swo
@@ -112,47 +112,14 @@ FrontCode/pnpm-debug.log*
 # ==========================================
 # Specific Project Files to Ignore
 # ==========================================
+# Temporary documentation or analysis files (optional, depending on preference)
+# project_analysis.md (User asked to keep this, so do NOT ignore)
 temp/
 backup/
-test_api.py
 
-# ==========================================
-# Additional Common Ignores
-# ==========================================
-# Node modules (root level)
-node_modules/
+# Install Package (Generated Artifact)
+Zhilian_Install_Package/
 
-# Environment files
-.env
-.env.local
-*.env
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# IDE and Editor
-*.iml
-.project
-.classpath
-.settings/
-
-# System files
-*.bak
-*.orig
-
-# Package lock files (optional - uncomment if you want to ignore them)
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-
-# Large binary files
-*.exe
-*.dll
-*.so
-*.dylib
-
-# Test outputs
-**/test-results/
-**/__snapshots__/
+# Dynamic Lists (Runtime generated)
+blocked_ips.json
+trusted_ips.json

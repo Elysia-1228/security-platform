@@ -240,12 +240,6 @@ class Discriminator(nn.Module):
 
 # ========== 工具函数 ==========
 def get_wlan_interface():
-    # 优先使用环境变量
-    env_iface = os.environ.get("IDS_INTERFACE")
-    if env_iface:
-        logger.info(f"{COLORS['green']}✅ 使用环境变量指定网卡：{env_iface}{COLORS['reset']}")
-        return env_iface
-
     try:
         from scapy.arch.windows import get_windows_if_list
         scapy_ifaces = get_windows_if_list()

@@ -25,8 +25,7 @@
     </select>
 
     <select id="queryAlertPage" resultType="com.yukasl.backcode.pojo.entity.potentialThreatAlert">
-        select id, threat_id, threat_level, attack_type, source_ip, target_ip, details, impact_scope, occur_time, create_time 
-        from potential_threat_alert
+        select id, threat_id, threat_level, impact_scope, occur_time, create_time from potential_threat_alert
         <where>
             <if test="threatLevel != null">
                 and threat_level = #{threatLevel}

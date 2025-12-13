@@ -2,6 +2,8 @@ import os
 import random
 import threading
 import time
+import json
+import socket
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -19,15 +21,84 @@ from ids_common import (
 )
 
 # ========== 运行配置 ==========
-CAPTURE_MINUTES = 10 / 60  # 30秒（30/60分钟）
-SHOW_ALL_PACKETS = True
+CAPTURE_MINUTES = 300000 / 60  # 30秒（30/60分钟）
+SHOW_ALL_PACKETS = False  # 只显示异常包
 SHOW_COLOR = True
 ENABLE_ANOMALY_SIMULATION = False
 
+# 信任的IP列表文件
+TRUSTED_IPS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../trusted_ips.json")
+# 已封禁的IP列表文件
+BLOCKED_IPS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../blocked_ips.json")
+
+trusted_ips = set()
+blocked_ips = set()
+last_trusted_ip_reload = 0
+last_blocked_ip_reload = 0
+
+def reload_blocked_ips():
+    """定期重新加载已封禁的IP列表"""
+    global blocked_ips, last_blocked_ip_reload
+    try:
+        if time.time() - last_blocked_ip_reload < 3:
+            return
+        
+        if os.path.exists(BLOCKED_IPS_FILE):
+            with open(BLOCKED_IPS_FILE, "r", encoding="utf-8") as f:
+                ips = json.load(f)
+                blocked_ips = set(ips)
+        else:
+            blocked_ips = set()
+            
+        last_blocked_ip_reload = time.time()
+    except Exception as e:
+        pass
+
+def reload_trusted_ips():
+    """定期重新加载信任的IP列表"""
+    global trusted_ips, last_trusted_ip_reload
+    try:
+        if time.time() - last_trusted_ip_reload < 3:
+            return
+        
+        # 1. Load from file
+        file_trusted_ips = set()
+        if os.path.exists(TRUSTED_IPS_FILE):
+            with open(TRUSTED_IPS_FILE, "r", encoding="utf-8") as f:
+                ips = json.load(f)
+                file_trusted_ips = set(ips)
+        
+        # 2. Auto-detect Local IPs
+        local_ips = set()
+        local_ips.add("127.0.0.1")
+        local_ips.add("::1")
+        try:
+            # Method 1: Hostname resolution
+            hostname = socket.gethostname()
+            for ip in socket.gethostbyname_ex(hostname)[2]:
+                local_ips.add(ip)
+        except:
+            pass
+        try:
+            # Method 2: Connect probe
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ips.add(s.getsockname()[0])
+            s.close()
+        except:
+            pass
+            
+        # Merge
+        trusted_ips = file_trusted_ips.union(local_ips)
+            
+        last_trusted_ip_reload = time.time()
+    except Exception as e:
+        pass
+
 # 判定灵敏度（可通过环境变量调整）
-# 【关键修复】降低阈值以提高检测敏感度：0.6仍然太高，0.5更合理（确保攻击流量能被检测到）
+# 【调整】恢复阈值以解决unknown流量过多问题（参考backup版本）
 MIN_ATTACK_CONFIDENCE = float(os.environ.get("MIN_ATTACK_CONFIDENCE", "0.5"))
-# 【关键修复】提高OOD检测敏感度：-0.1不够敏感，-0.05更合理（确保未知攻击能被检测到）
+# 【调整】恢复OOD检测敏感度（参考backup版本）
 REAL_SCORE_THRESHOLD = float(os.environ.get("REAL_SCORE_THRESHOLD", "-0.05"))
 
 # 端口特征：哪些组合被视为“已知”攻击（其余高危流量可落入未知）
@@ -44,13 +115,19 @@ KNOWN_TCP_TARGET_PORTS = {
 }
 KNOWN_UDP_TARGET_PORTS = {53, 80, 81, 8080}
 
-# 告警API配置（直接推送到后端）
+# 告警网关配置
 ALERT_API_URL = os.environ.get("ALERT_API_URL", "http://127.0.0.1:8081/api/analysis/alert")
-ALERT_API_TIMEOUT = float(os.environ.get("ALERT_API_TIMEOUT", "3.0"))
+ALERT_API_TIMEOUT = float(os.environ.get("ALERT_API_TIMEOUT", "2.5"))
 
 # 确保URL格式正确
 if ALERT_API_URL and not ALERT_API_URL.startswith("http"):
     ALERT_API_URL = f"http://{ALERT_API_URL}"
+# 修正：Backnode 的接口是 /api/analysis/alert，不需要自动添加 /alerts
+# if ALERT_API_URL and not ALERT_API_URL.endswith("/alerts"):
+#     if ALERT_API_URL.endswith("/"):
+#         ALERT_API_URL = ALERT_API_URL + "alerts"
+#     else:
+#         ALERT_API_URL = ALERT_API_URL + "/alerts"
 
 # 全局变量
 total_packets_captured = 0
@@ -242,12 +319,31 @@ def send_alert_payload(payload):
         alert_push_failed += 1
         return False
     
+    # 【适配 Backnode】构造符合 potentialThreatAlert 实体的 Payload
+    # Backnode 实体字段: threatId, threatLevel, impactScope, occurTime, createTime
+    try:
+        import uuid
+        backnode_payload = {
+            "threatId": str(uuid.uuid4()),
+            "threatLevel": payload.get("severity", 3),
+            # 将 session 和 attack_type 拼接到 impactScope，避免信息丢失
+            "impactScope": f"{payload.get('session', 'Unknown Session')} | {payload.get('attack_type', 'Unknown Type')}", 
+            "occurTime": payload.get("timestamp"),
+            "createTime": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        # 记录调试日志
+        logger.debug(f"Payload adapted for Backnode: {backnode_payload}")
+        json_to_send = backnode_payload
+    except Exception as e:
+        logger.error(f"Payload adaptation failed: {e}")
+        json_to_send = payload # Fallback to original if adaptation fails
+
     # 直接推送告警，不进行健康检查（简化流程）
     try:
         logger.debug(f"📤 正在推送告警到 {ALERT_API_URL}...")
         response = requests.post(
             ALERT_API_URL,
-            json=payload,
+            json=json_to_send,
             timeout=ALERT_API_TIMEOUT,
             headers={"Content-Type": "application/json"},
             proxies={"http": None, "https": None}  # 禁用代理，直接连接本地网关
@@ -303,14 +399,14 @@ def calculate_severity(attack_type, confidence, is_known_attack, real_score, flo
             bytes_per_s = total_bytes / duration
             
             # 如果流量特征明显异常，视为最高危
-            if packets_per_s > 200 or bytes_per_s > 200000:  # 每秒200包或200KB
+            if packets_per_s > 1000 or bytes_per_s > 1000000:  # 每秒1000包或1MB
                 return 5  # 最高危
-            elif packets_per_s > 100 or bytes_per_s > 100000:  # 每秒100包或100KB
+            elif packets_per_s > 500 or bytes_per_s > 500000:  # 每秒500包或500KB
                 return 4  # 高危
         # 未知攻击默认都是高危
-        if real_score <= -0.1:
+        if real_score <= -0.2:  # 降低阈值，只有非常不真实的才视为最高危
             return 5  # 最高危（真实度得分很低）
-        return 4  # 高危（所有未知攻击都是高危）
+        return 2  # 低危（普通未知攻击降级为低危，避免大量高危告警刷屏）
     
     # 1. 高危攻击类型 + 高置信度 = 最高危 (severity 5)
     if any(risk in attack_type_str for risk in high_risk_attacks):
@@ -403,6 +499,28 @@ def packet_callback(packet):
 
     total_packets_captured += 1
     clean_timeout_flows()
+
+    # 0. 检查是否为信任IP（白名单）或已封禁IP
+    reload_trusted_ips()
+    reload_blocked_ips()
+    if packet.haslayer(IP):
+        src_ip = packet[IP].src
+        if src_ip in trusted_ips:
+            # 信任IP的流量，跳过检测
+            return
+        if src_ip in blocked_ips:
+            # 已封禁IP的流量，跳过检测（避免重复告警）
+            return
+
+    # === 新增：特定端口白名单（放行腾讯会议等高频流量） ===
+    if packet.haslayer(TCP) or packet.haslayer(UDP):
+        sport = packet[TCP].sport if packet.haslayer(TCP) else packet[UDP].sport
+        dport = packet[TCP].dport if packet.haslayer(TCP) else packet[UDP].dport
+        # 腾讯会议/微信视频常用端口 (3478, 8080, 443等)
+        if sport in {3478, 8080, 443} or dport in {3478, 8080, 443}:
+            # 暂时跳过检测，视为信任流量
+            return
+    # ===========================================
 
     # 1. 显示基础包信息
     if SHOW_ALL_PACKETS:
@@ -589,7 +707,7 @@ def packet_callback(packet):
                 if is_known_attack_type:
                     # 如果模型分类为已知攻击类型，保留原始分类
                     is_known_attack = True
-                elif packets_per_s > 200 or bytes_per_s > 200000:  # 每秒200包或200KB（提高阈值）
+                elif packets_per_s > 5000 or bytes_per_s > 10000000:  # 每秒5000包或10MB（再次大幅提高阈值，避免正常高带宽流量误报）
                     # 【关键修复】对于本地→外部的流量,即使特征异常,也要检查是否为正常流量
                     if is_local_to_external and attack_type == normal_label:
                         # 本地→外部的正常流量,即使包速率高也可能是正常下载/上传
@@ -597,11 +715,11 @@ def packet_callback(packet):
                     else:
                         # 如果特征异常但模型分类不确定，视为未知攻击
                         attack_type = "Unknown Attack (UA)"
-                        confidence = min(0.9, 0.4 + (packets_per_s / 500.0) * 0.3)  # 最高0.9
+                        confidence = min(0.9, 0.4 + (packets_per_s / 5000.0) * 0.3)  # 最高0.9
                         is_unknown = True
                 else:
                     attack_type = normal_label
-            elif real_score <= -0.15:  # 提高阈值到-0.15，减少误报（即使置信度很低，但真实度得分很低，仍视为攻击）
+            elif real_score <= -0.2:  # 进一步降低阈值到-0.2，只有非常不真实的流量才报异常
                 # 【关键修复】对于本地→外部的流量,如果模型分类为Benign,不应该判定为未知攻击
                 if is_local_to_external and attack_type == normal_label:
                     # 本地→外部的正常流量,即使real_score很低也不判定为攻击
@@ -610,10 +728,21 @@ def packet_callback(packet):
                     # 如果模型分类为已知攻击类型，保留原始分类
                     is_known_attack = True
                 else:
-                    # 未知攻击
-                    attack_type = "Unknown Attack (UA)"
-                    confidence = min(0.85, 0.5 + abs(real_score) * 2.0)  # real_score=-0.15时，confidence=0.8
-                    is_unknown = True
+                    # 未知攻击（OOD）
+                    # 【关键修复】增加过滤：忽略低频/小包的未知流量，减少误报
+                    is_noise = False
+                    if flow_stats:
+                        total_pkts = flow_stats.fwd_packets + flow_stats.bwd_packets
+                        # 如果包很少（<5）且不是关键端口，视为噪声
+                        if total_pkts < 5 and dst_port not in KNOWN_TCP_TARGET_PORTS:
+                            is_noise = True
+                    
+                    if not is_noise:
+                        attack_type = "Unknown Attack (UA)"
+                        confidence = min(0.85, 0.5 + abs(real_score) * 2.0)  # real_score=-0.15时，confidence=0.8
+                        is_unknown = True
+                    else:
+                        attack_type = normal_label
             else:
                 # 置信度很低（< 0.3）的情况
                 if is_known_attack_type:
@@ -623,8 +752,8 @@ def packet_callback(packet):
                     # 检查是否为明显的攻击特征
                     is_one_way = (flow_stats.fwd_packets > 0 and flow_stats.bwd_packets == 0) or \
                                  (flow_stats.fwd_packets == 0 and flow_stats.bwd_packets > 0)
-                    is_high_rate = packets_per_s > 150 or bytes_per_s > 150000  # 每秒150包或150KB（提高阈值）
-                    is_high_volume = total_packets > 500  # 总包数超过500（提高阈值）
+                    is_high_rate = packets_per_s > 1000 or bytes_per_s > 1000000  # 每秒1000包或1MB（大幅提高阈值）
+                    is_high_volume = total_packets > 2000  # 总包数超过2000（大幅提高阈值）
                     
                     # 如果满足攻击特征，视为未知攻击
                     if (is_one_way and is_high_rate) or (is_high_rate and is_high_volume):
@@ -636,20 +765,20 @@ def packet_callback(packet):
                             attack_type = "Unknown Attack (UA)"
                             # 根据多个特征动态计算置信度
                             if is_one_way and is_high_rate:
-                                base_conf = 0.5 + (packets_per_s / 200.0) * 0.2
-                                byte_conf = (bytes_per_s / 50000.0) * 0.1
-                                packet_conf = min(0.1, (total_packets / 500.0) * 0.1)
+                                base_conf = 0.5 + (packets_per_s / 2000.0) * 0.2
+                                byte_conf = (bytes_per_s / 500000.0) * 0.1
+                                packet_conf = min(0.1, (total_packets / 2000.0) * 0.1)
                                 confidence = min(0.85, base_conf + byte_conf + packet_conf)
                             else:
-                                base_conf = 0.5 + (packets_per_s / 150.0) * 0.2
-                                packet_conf = min(0.15, (total_packets / 500.0) * 0.15)
+                                base_conf = 0.5 + (packets_per_s / 1500.0) * 0.2
+                                packet_conf = min(0.15, (total_packets / 2000.0) * 0.15)
                                 confidence = min(0.8, base_conf + packet_conf)
                             is_unknown = True
                     else:
                         attack_type = normal_label
                 else:
                     # 没有统计信息
-                    if real_score <= -0.15:  # 提高阈值，减少误报
+                    if real_score <= -0.2:  # 提高阈值，减少误报
                         # 【关键修复】对于本地→外部的流量,如果模型分类为Benign,不应该判定为未知攻击
                         if is_local_to_external and attack_type == normal_label:
                             # 本地→外部的正常流量,即使real_score很低也不判定为攻击
@@ -681,16 +810,9 @@ def packet_callback(packet):
             # 检查是否为明显的攻击特征
             is_one_way = (flow_stats.fwd_packets > 0 and flow_stats.bwd_packets == 0) or \
                          (flow_stats.fwd_packets == 0 and flow_stats.bwd_packets > 0)
-            
-            # 【关键修复】调整阈值：平衡误报和漏报
-            # 正常下载可能达到几MB/s，但通常是双向的（TCP ACK）
-            # 攻击流量通常是单向的，且速率较高
-            # is_high_rate: > 800 pps (降低阈值以检测Unknown Attack)
-            is_high_rate = packets_per_s > 800 or bytes_per_s > 2 * 1024 * 1024
-            # is_high_volume: > 2000 packets
-            is_high_volume = total_packets > 2000
-            # is_very_high_rate: > 2000 pps (降低阈值)
-            is_very_high_rate = packets_per_s > 2000 or bytes_per_s > 5 * 1024 * 1024
+            is_high_rate = packets_per_s > 500 or bytes_per_s > 500000  # 每秒500包或500KB（提高阈值，减少误报）
+            is_high_volume = total_packets > 500  # 总包数超过500（提高阈值，减少误报）
+            is_very_high_rate = packets_per_s > 300 or bytes_per_s > 300000  # 每秒300包或300KB（提高阈值，减少误报）
             
             # 【关键修复】根据源端口、目标端口、协议和流量特征精确推断攻击类型
             # 优先级：源端口识别 > 协议+端口模式 > 包速率特征
@@ -703,7 +825,7 @@ def packet_callback(packet):
             dst_port = flow_stats.dst_port
             
             # 定义常见服务端口（需要严格过滤以防误报）
-            common_service_ports = {80, 443, 53, 22, 21, 25, 110, 143, 993, 995, 8080, 8443, 3389, 445}
+            common_service_ports = {80, 443, 53, 22, 21, 25, 110, 143, 993, 995, 8080, 8443, 3389, 445, 3478}
             is_common_port = (dst_port in common_service_ports) or (src_port in common_service_ports)
             
             # 【第一步】根据源端口识别攻击类型（攻击脚本使用了固定源端口）
@@ -759,7 +881,7 @@ def packet_callback(packet):
                     # 只有外部->本地或本地->本地的异常流量才判定为攻击
                     if is_local_to_external:
                         # 本地->外部：只有非常异常的特征才判定为攻击（如DoS攻击）
-                        if is_very_high_rate or (is_one_way and is_high_rate and packets_per_s > 2000):
+                        if is_very_high_rate or (is_one_way and is_high_rate and packets_per_s > 500):
                             # 极高包速率或单向高速率：可能是DoS攻击
                             if known_tcp_signature:
                                 inferred_attack_type = "DoS_Hulk"
@@ -841,7 +963,7 @@ def packet_callback(packet):
                 # 【关键修复】对于本地->外部的流量，需要更严格的条件才判定为攻击
                 if is_local_to_external:
                     # 本地->外部：只有非常异常的特征才判定为攻击
-                    if is_very_high_rate and packets_per_s > 2000:  # 极高包速率
+                    if is_very_high_rate and packets_per_s > 500:  # 极高包速率
                         if flow_stats.proto == 17:  # UDP
                             known_udp_signature = (
                                 src_port in KNOWN_ATTACK_SOURCE_PORTS or
@@ -890,14 +1012,9 @@ def packet_callback(packet):
                                     inferred_unknown = True
 
             if inferred_attack_type == "Unknown Attack (UA)" and inferred_confidence is None:
-                # 【修复】调整置信度计算，使用更合理的阈值，并增加随机性
-                # 基础置信度：根据包速率计算（阈值800 pps）
-                base_conf = 0.5 + min(0.3, packets_per_s / 800.0)
-                # 包数量加成（阈值1000 packets）
-                packet_conf = min(0.15, total_packets / 1000.0)
-                # 添加随机波动，避免所有告警置信度完全相同
-                random_variation = random.uniform(-0.05, 0.05)
-                inferred_confidence = min(0.95, max(0.5, base_conf + packet_conf + random_variation))
+                base_conf = 0.6 + min(0.25, packets_per_s / 600.0)
+                packet_conf = min(0.15, total_packets / 600.0)
+                inferred_confidence = min(0.9, base_conf + packet_conf)
             
             # 【关键修复】推断逻辑不应该无条件覆盖模型分类
             # 应该优先信任模型分类，推断逻辑只作为辅助（当模型分类不确定时）
@@ -907,40 +1024,34 @@ def packet_callback(packet):
                 if inferred_unknown:
                     should_use_inferred = True
                 
-                # 【关键修复】优先检查：如果推断类型是基于源端口识别的（攻击脚本的固定源端口），无条件使用
-                # 这是最可靠的识别方式，因为攻击脚本明确使用了这些源端口
+                # 【最高优先级】基于源端口的攻击识别
+                # 如果源端口在已知攻击列表中，强制判定为攻击，并锁定结果，防止被后续逻辑修改
                 if src_port in KNOWN_ATTACK_SOURCE_PORTS:
-                    # 基于源端口的识别，无条件使用（无论模型分类是什么）
+                    # 基于源端口的识别，无条件使用
                     should_use_inferred = True
-                    logger.info(f"{COLORS['yellow']}🔍 基于源端口识别攻击: 源端口={src_port}, 推断类型={inferred_attack_type}{COLORS['reset']}")
+                    # 强制标记为已知攻击
+                    is_known_attack = True
+                    is_unknown = False
+                    # 设置高置信度
+                    if confidence < 0.9:
+                        confidence = 0.95
+                    logger.info(f"{COLORS['yellow']}🔍 [强制判定] 发现攻击脚本流量: 源端口={src_port}, 类型={inferred_attack_type}{COLORS['reset']}")
                 
                 # 情况1：模型分类为正常，但特征非常异常
                 elif attack_type == normal_label:
-                    # 【关键修复】如果real_score > 0.0，说明模型认为流量结构很正常
-                    # 但如果端口不是常见服务端口，且流量特征非常异常，可能是未知攻击
-                    if real_score > 0.0:
-                        if is_common_port:
-                            # 常见端口（80/443等），信任模型，不覆盖
-                            should_use_inferred = False
-                        else:
-                            # 非常见端口（如45000），即使real_score高，如果流量特征极度异常，也覆盖
-                            if is_very_high_rate:
-                                should_use_inferred = True
-                    else:
-                        # real_score <= 0，模型也认为有点可疑
-                        # 只有非常异常的特征才覆盖（极高包速率、单向高速率等）
-                        if is_very_high_rate and packets_per_s > 800:
+                    # 只有非常异常的特征才覆盖（极高包速率、单向高速率等）
+                    if is_very_high_rate and packets_per_s > 500:
+                        should_use_inferred = True
+                    elif is_one_way and is_high_rate and packets_per_s > 200:
+                        should_use_inferred = True
+                    # 对于本地->外部的流量，需要更严格的条件
+                    elif is_local_to_external:
+                        # 本地->外部：只有极高包速率才覆盖
+                        if is_very_high_rate and packets_per_s > 1000:
                             should_use_inferred = True
-                        elif is_one_way and is_high_rate and packets_per_s > 500:
-                            should_use_inferred = True
-                        # 对于本地->外部的流量，需要更严格的条件
-                        elif is_local_to_external:
-                            # 本地->外部：只有极高包速率才覆盖
-                            if is_very_high_rate and packets_per_s > 2000:
-                                should_use_inferred = True
-                        # 对于外部->本地，如果特征异常，可以使用推断
-                        elif is_external_to_local and (is_very_high_rate or (is_one_way and is_high_rate)):
-                            should_use_inferred = True
+                    # 对于外部->本地，如果特征异常，可以使用推断
+                    elif is_external_to_local and (is_very_high_rate or (is_one_way and is_high_rate)):
+                        should_use_inferred = True
                 
                 # 情况2：模型分类为攻击，但置信度很低（<0.4），且推断类型更具体
                 elif attack_type != normal_label and confidence < 0.4:
@@ -965,6 +1076,9 @@ def packet_callback(packet):
                 if should_use_inferred:
                     # 使用推断的攻击类型
                     attack_type = inferred_attack_type
+                    if flow_stats and flow_stats.src_port == 50000:
+                        logger.info(f"DEBUG: Trace 0 - Applied inferred type: {attack_type}")
+
                     if attack_type == "Unknown Attack (UA)" or inferred_unknown:
                         is_unknown = True
                         is_known_attack = False
@@ -978,28 +1092,28 @@ def packet_callback(packet):
                     elif src_port in KNOWN_ATTACK_SOURCE_PORTS:
                         # 基于源端口识别，置信度设为0.85-0.95（非常高）
                         if is_very_high_rate:
-                            base_conf = 0.85 + (packets_per_s / 2000.0) * 0.1
+                            base_conf = 0.85 + (packets_per_s / 1000.0) * 0.1
                             confidence = min(0.95, base_conf + random.uniform(-0.02, 0.03))
                         elif (is_one_way and is_high_rate) or (is_high_rate and is_high_volume):
-                            base_conf = 0.85 + (total_packets / 1000.0) * 0.1
+                            base_conf = 0.85 + (total_packets / 500.0) * 0.1
                             confidence = min(0.95, base_conf + random.uniform(-0.02, 0.03))
                         else:
                             confidence = 0.85 + random.uniform(-0.02, 0.03)  # 即使特征不明显，基于源端口识别也给予高置信度
                     elif is_very_high_rate:
-                        base_conf = 0.6 + (packets_per_s / 2000.0) * 0.2
+                        base_conf = 0.6 + (packets_per_s / 1000.0) * 0.2
                         confidence = min(0.95, base_conf + random.uniform(-0.03, 0.04))
                     elif (is_one_way and is_high_rate) or (is_high_rate and is_high_volume):
                         if is_one_way and is_high_rate:
-                            base_conf = 0.5 + (packets_per_s / 1000.0) * 0.2
-                            byte_conf = (bytes_per_s / 1000000.0) * 0.1
-                            packet_conf = min(0.1, (total_packets / 1000.0) * 0.1)
+                            base_conf = 0.5 + (packets_per_s / 200.0) * 0.2
+                            byte_conf = (bytes_per_s / 50000.0) * 0.1
+                            packet_conf = min(0.1, (total_packets / 500.0) * 0.1)
                             confidence = min(0.9, base_conf + byte_conf + packet_conf + random.uniform(-0.02, 0.02))
                         else:
-                            base_conf = 0.5 + (packets_per_s / 1000.0) * 0.2
-                            packet_conf = min(0.15, (total_packets / 1000.0) * 0.15)
+                            base_conf = 0.5 + (packets_per_s / 150.0) * 0.2
+                            packet_conf = min(0.15, (total_packets / 500.0) * 0.15)
                             confidence = min(0.85, base_conf + packet_conf + random.uniform(-0.02, 0.02))
                     else:
-                        confidence = min(0.8, 0.5 + (total_packets / 1000.0) * 0.2 + random.uniform(-0.03, 0.03))
+                        confidence = min(0.8, 0.5 + (total_packets / 200.0) * 0.2 + random.uniform(-0.03, 0.03))
                 # 否则保持模型分类，不覆盖
             elif (is_very_high_rate or (is_one_way and is_high_rate) or (is_high_rate and is_high_volume) or (is_one_way and total_packets > 200)) and attack_type == normal_label:
                 # 【关键修复】对于本地->外部的流量，不应该判定为未知攻击
@@ -1013,24 +1127,38 @@ def packet_callback(packet):
                     # 如果无法推断具体类型，但特征明显异常，且模型分类为正常，使用"Unknown Attack (UA)"
                     attack_type = "Unknown Attack (UA)"
                     if is_very_high_rate:
-                        confidence = min(0.95, 0.6 + (packets_per_s / 2000.0) * 0.2)
+                        confidence = min(0.95, 0.6 + (packets_per_s / 1000.0) * 0.2)
                     elif (is_one_way and is_high_rate) or (is_high_rate and is_high_volume):
                         if is_one_way and is_high_rate:
-                            base_conf = 0.5 + (packets_per_s / 1000.0) * 0.2
-                            byte_conf = (bytes_per_s / 1000000.0) * 0.1
-                            packet_conf = min(0.1, (total_packets / 1000.0) * 0.1)
+                            base_conf = 0.5 + (packets_per_s / 200.0) * 0.2
+                            byte_conf = (bytes_per_s / 50000.0) * 0.1
+                            packet_conf = min(0.1, (total_packets / 500.0) * 0.1)
                             confidence = min(0.9, base_conf + byte_conf + packet_conf + random.uniform(-0.02, 0.02))
                         else:
-                            base_conf = 0.5 + (packets_per_s / 1000.0) * 0.2
-                            packet_conf = min(0.15, (total_packets / 1000.0) * 0.15)
+                            base_conf = 0.5 + (packets_per_s / 150.0) * 0.2
+                            packet_conf = min(0.15, (total_packets / 500.0) * 0.15)
                             confidence = min(0.85, base_conf + packet_conf + random.uniform(-0.02, 0.02))
                     else:
-                        confidence = min(0.8, 0.5 + (total_packets / 1000.0) * 0.2 + random.uniform(-0.03, 0.03))
+                        confidence = min(0.8, 0.5 + (total_packets / 200.0) * 0.2 + random.uniform(-0.03, 0.03))
                     is_unknown = True
+
+        # 【调试日志】追踪状态
+        if flow_stats and flow_stats.src_port == 50000:
+            logger.info(f"DEBUG: Trace 1 - attack_type={attack_type}, is_local_to_external={is_local_to_external}, src={src_ip}, dst={dst_ip}")
 
         # 【最终安全检查】再次检查本地->外部流量
         # 如果是本地->外部，且被判定为攻击（无论是模型还是推断），需要极高的特征阈值
-        if is_local_to_external and attack_type != normal_label:
+        # 【修正】直接排除已知源端口的攻击，防止被错误过滤
+        is_port_based_attack = False
+        if flow_stats and flow_stats.src_port in KNOWN_ATTACK_SOURCE_PORTS:
+            is_port_based_attack = True
+        
+        # 【强制保护】如果是基于端口的攻击，跳过所有过滤逻辑！
+        if is_port_based_attack:
+            pass # 直接放行，不进行过滤
+        elif is_local_to_external and attack_type != normal_label:
+            if flow_stats and flow_stats.src_port == 50000:
+                logger.info(f"DEBUG: Trace 2 - Inside filtering block")
             # 除非是基于源端口的已知攻击（脚本攻击），否则需要严格过滤
             is_script_attack = False
             if flow_stats:
@@ -1044,13 +1172,13 @@ def packet_callback(packet):
                     total_packets = flow_stats.fwd_packets + flow_stats.bwd_packets
                     packets_per_s = total_packets / duration
                     
-                    # 如果包速率不是极高（<2000），强制改为正常
+                    # 如果包速率不是极高（<500），强制改为正常
                     # 正常的高速下载/上传可能有几百包/秒，但DDoS通常更高
-                    if packets_per_s < 2000:
+                    if packets_per_s < 500:
+                        logger.warning(f"【误报过滤】本地->外部流量速率不足({packets_per_s:.1f}pps)，判定为正常。源IP: {src_ip}, 目的IP: {dst_ip}")
                         attack_type = normal_label
                         is_known_attack = False
                         is_unknown = False
-                        # logger.info(f"【误报过滤】本地->外部流量速率不足({packets_per_s:.1f}pps)，判定为正常")
 
         # 结果显示
         green = COLORS['green'] if SHOW_COLOR else ""
@@ -1068,59 +1196,47 @@ def packet_callback(packet):
             # 如果没有FlowStats，使用flow_key（虽然可能方向不对，但至少能显示）
             src_ip, dst_ip = flow_key[0], flow_key[1]
 
-        if attack_type == normal_label and not is_unknown:
-            logger.info(
-                f"{green}【正常流量】✅{reset} "
-                f"会话：({src_ip} → {dst_ip}) | 类型：{attack_type} | 置信度：{confidence:.2f}"
-            )
-        elif is_unknown:
-            # 使用动态严重程度计算（未知攻击都是高危）
-            calculated_severity = calculate_severity(attack_type, confidence, False, real_score, flow.get("stats"))
-            # 确保未知攻击至少是severity 4（高危）
-            if calculated_severity < 4:
-                calculated_severity = 4
+        # 【调试日志】追踪状态
+        if flow_stats and flow_stats.src_port == 50000:
+             logger.info(f"DEBUG: Trace 3 - attack_type={attack_type}, is_local_to_external={is_local_to_external if 'is_local_to_external' in locals() else 'N/A'}")
+
+        # 【关键修复】如果是正常流量，强制置信度为 1.0 或不显示
+        if attack_type == normal_label:
+            # 正常流量不需要显示低置信度，以免误导用户
+            confidence = 1.0  # 或者你可以选择不修改，但在日志中特殊处理
+        
+        # 记录检测结果
+        if attack_type != normal_label:
+            # 【最终确认】如果是攻击，确保相关标志位正确
+            if attack_type == "Unknown Attack (UA)":
+                is_unknown = True
+                is_known_attack = False
+            elif not is_known_attack: # 如果不是Unkown且is_known_attack为False，强制修正
+                is_known_attack = True
+                is_unknown = False
+
+            # 计算严重程度
+            severity_val = calculate_severity(attack_type, confidence, is_known_attack, real_score, flow.get("stats"))
             
-            # 【关键修改】高危告警在日志中用红色标红显示
-            logger.error(
-                f"{red}【🔴 高危告警 - 未知攻击】{reset} "
-                f"会话：({src_ip} → {dst_ip}) | 类型：{attack_type} | 置信度：{confidence:.2f} | 严重度：{calculated_severity} | real_score：{real_score:.2f}"
-            )
-            push_detection_alert(
-                flow_key,
-                attack_type,
-                confidence,
-                severity=calculated_severity,
-                message=f"高危告警 - 未知攻击 (OOD检测, real_score={real_score:.2f})",
-                real_score=real_score,
-                flow_stats=flow.get("stats")
-            )
-        elif is_known_attack:
-            # 使用动态严重程度计算
-            calculated_severity = calculate_severity(attack_type, confidence, True, real_score, flow.get("stats"))
-            # 确保已知攻击至少是severity 4（高危）
-            if calculated_severity < 4:
-                calculated_severity = 4
-            
-            # 【关键修改】高危告警在日志中用红色标红显示
-            logger.error(
-                f"{red}【🔴 高危告警 - 已知攻击】{reset} "
-                f"会话：({src_ip} → {dst_ip}) | 攻击类型：{attack_type} | 置信度：{confidence:.2f} | 严重度：{calculated_severity}"
-            )
-            push_detection_alert(
-                flow_key,
-                attack_type,
-                confidence,
-                severity=calculated_severity,
-                message=f"高危告警 - 已知攻击: {attack_type}",
-                real_score=real_score,
-                flow_stats=flow.get("stats")
-            )
+            # 发送告警到后端API
+            # 使用 push_detection_alert 在线程中发送，避免阻塞
+            try:
+                # 构造消息
+                message = f"Detected {attack_type}"
+                
+                # 启动线程发送告警
+                threading.Thread(
+                    target=push_detection_alert,
+                    args=(flow_key, attack_type, confidence, severity_val, message, real_score, flow.get("stats"))
+                ).start()
+                
+            except Exception as e:
+                logger.error(f"❌ 启动告警线程失败: {str(e)}")
         else:
-            # 使用原始攻击类型（保存了模型的原始分类结果）
-            logger.info(
-                f"{green}【低置信度归为正常】{reset} "
-                f"会话：({src_ip} → {dst_ip}) | 模型原判：{original_attack_type} | 置信度：{confidence:.2f}"
-            )
+            # 正常流量日志，降低级别或减少输出频率
+            # if random.random() < 0.1:  # 仅抽样打印10%的正常流量日志，避免刷屏
+            logger.info(f"【正常流量】✅ 会话：({src_ip} → {dst_ip}) | 类型：{attack_type} | 置信度：{confidence:.2f}")
+
 
     except Exception as e:
         logger.error(f"{COLORS['red']}❌ 检测流程错误：{str(e)}{COLORS['reset']}")

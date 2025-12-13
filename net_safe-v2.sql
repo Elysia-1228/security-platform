@@ -18,6 +18,27 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------
+-- Table structure for sys_user (用户表)
+-- ----------------------------
+DROP TABLE IF EXISTS `sys_user`;
+CREATE TABLE `sys_user`  (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '用户名',
+  `password` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '密码',
+  `role` tinyint NOT NULL DEFAULT 1 COMMENT '角色：1-管理员、2-普通用户',
+  `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态：0-禁用、1-启用',
+  `create_time` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `idx_username`(`username` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of sys_user
+-- ----------------------------
+INSERT INTO `sys_user` VALUES (1, 'admin', 'admin123', 1, 1, '2025-11-27 22:42:05', '2025-11-27 22:42:05');
+
+-- ----------------------------
 -- Table structure for host_status_monitor
 -- ----------------------------
 DROP TABLE IF EXISTS `host_status_monitor`;
@@ -40,16 +61,16 @@ CREATE TABLE `host_status_monitor`  (
 -- ----------------------------
 -- Records of host_status_monitor
 -- ----------------------------
-INSERT INTO `host_status_monitor` VALUES (1, 'host_001', 23.5, 45.2, 128, '2025-11-27 00:15:30', '2025-11-27 22:42:05');
-INSERT INTO `host_status_monitor` VALUES (2, 'host_002', 48.9, 67.8, 89, '2025-11-27 01:20:15', '2025-11-27 22:42:05');
-INSERT INTO `host_status_monitor` VALUES (3, 'host_003', 12.3, 32.1, 56, '2025-11-27 02:05:40', '2025-11-27 22:42:05');
-INSERT INTO `host_status_monitor` VALUES (4, 'host_004', 78.6, 89.3, 210, '2025-11-27 03:30:22', '2025-11-27 22:42:05');
-INSERT INTO `host_status_monitor` VALUES (5, 'host_005', 35.7, 52.9, 98, '2025-11-27 04:18:55', '2025-11-27 22:42:05');
-INSERT INTO `host_status_monitor` VALUES (6, 'host_006', 5.2, 18.7, 34, '2025-11-27 05:42:10', '2025-11-27 22:42:05');
-INSERT INTO `host_status_monitor` VALUES (7, 'host_007', 67.4, 73.5, 156, '2025-11-27 06:25:33', '2025-11-27 22:42:05');
-INSERT INTO `host_status_monitor` VALUES (8, 'host_008', 29.8, 41.2, 76, '2025-11-27 07:10:45', '2025-11-27 22:42:05');
-INSERT INTO `host_status_monitor` VALUES (9, 'host_009', 83.1, 91.4, 245, '2025-11-27 08:35:18', '2025-11-27 22:42:05');
-INSERT INTO `host_status_monitor` VALUES (10, 'host_010', 18.9, 27.6, 63, '2025-11-27 09:50:27', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (1, 'host_001', 23.5, 45.2, 128, 45.0, '/: 45%', '{}', '2025-11-27 00:15:30', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (2, 'host_002', 48.9, 67.8, 89, 60.5, '/: 60%', '{}', '2025-11-27 01:20:15', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (3, 'host_003', 12.3, 32.1, 56, 30.0, '/: 30%', '{}', '2025-11-27 02:05:40', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (4, 'host_004', 78.6, 89.3, 210, 85.0, '/: 85%', '{}', '2025-11-27 03:30:22', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (5, 'host_005', 35.7, 52.9, 98, 50.0, '/: 50%', '{}', '2025-11-27 04:18:55', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (6, 'host_006', 5.2, 18.7, 34, 15.0, '/: 15%', '{}', '2025-11-27 05:42:10', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (7, 'host_007', 67.4, 73.5, 156, 70.0, '/: 70%', '{}', '2025-11-27 06:25:33', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (8, 'host_008', 29.8, 41.2, 76, 40.0, '/: 40%', '{}', '2025-11-27 07:10:45', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (9, 'host_009', 83.1, 91.4, 245, 90.0, '/: 90%', '{}', '2025-11-27 08:35:18', '2025-11-27 22:42:05');
+INSERT INTO `host_status_monitor` VALUES (10, 'host_010', 18.9, 27.6, 63, 25.0, '/: 25%', '{}', '2025-11-27 09:50:27', '2025-11-27 22:42:05');
 
 -- ----------------------------
 -- Table structure for network_threat_collection_api

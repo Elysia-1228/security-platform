@@ -32,7 +32,17 @@ public interface AnalysisService {
     potentialThreatAlert queryAlertById(Integer id);
 
     /**
+     * 根据 UUID 查询详情
+     */
+    potentialThreatAlert queryAlertByThreatId(String threatId);
+
+    /**
      * 保存并上链告警
      */
     void saveAlert(potentialThreatAlert alert);
+
+    /**
+     * 获取攻击趋势统计数据
+     */
+    java.util.List<java.util.Map<String, Object>> getTrendStats(String timeRange);
 }

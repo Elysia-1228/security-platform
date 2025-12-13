@@ -1,0 +1,81 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "启动前端 (Frontend)",
+            "type": "shell",
+            "command": "cmd",
+            "args": ["/c", "npx vite"],
+            "options": {
+                "cwd": "${workspaceFolder}/FrontCode"
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "group": "dev-servers"
+            }
+        },
+        {
+            "label": "启动后端 (Backend)",
+            "type": "process",
+            "command": "E:\\IntelliJ IDEA 2024.2.4\\plugins\\maven\\lib\\maven3\\bin\\mvn.cmd",
+            "args": ["spring-boot:run"],
+            "options": {
+                "cwd": "${workspaceFolder}/BackCode"
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "group": "dev-servers"
+            }
+        },
+        {
+            "label": "启动Redis (Redis)",
+            "type": "shell",
+            "command": "cmd",
+            "args": ["/c", "start_redis.bat"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared",
+                "group": "dev-servers"
+            }
+        },
+        {
+            "label": "一键启动前后端",
+            "dependsOn": [
+                "启动Redis (Redis)",
+                "启动后端 (Backend)",
+                "启动前端 (Frontend)"
+            ],
+            "dependsOrder": "parallel",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "一键停止前后端",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-Command",
+                "Write-Host '正在停止服务...' -ForegroundColor Yellow; $nodeProcs = Get-Process -Name 'node' -ErrorAction SilentlyContinue; if ($nodeProcs) { $nodeProcs | Stop-Process -Force; Write-Host '前端服务已停止' -ForegroundColor Green } else { Write-Host '前端服务未运行' -ForegroundColor Gray }; $javaProcs = Get-Process -Name 'java' -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like '*spring-boot*' -or $_.MainWindowTitle -like '*BackCode*' }; $allJava = Get-Process -Name 'java' -ErrorAction SilentlyContinue; if ($allJava) { $allJava | Stop-Process -Force; Write-Host '后端服务已停止' -ForegroundColor Green } else { Write-Host '后端服务未运行' -ForegroundColor Gray }; Write-Host '所有服务已停止!' -ForegroundColor Cyan"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
+    ]
+}

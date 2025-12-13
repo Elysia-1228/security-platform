@@ -48,11 +48,48 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="absolute inset-0 bg-gradient-to-r from-cyber-accent to-blue-600 rounded-2xl blur opacity-30"></div>
         <div className="relative bg-cyber-900/80 backdrop-blur-xl border border-cyber-700/50 p-8 rounded-2xl shadow-2xl">
           <div className="flex flex-col items-center mb-10">
-            <div className="w-20 h-20 bg-gradient-to-br from-cyber-900 to-cyber-800 border border-cyber-700 rounded-xl flex items-center justify-center mb-4 relative z-10 shadow-lg shadow-cyber-accent/10">
-              <ShieldCheck size={40} className="text-cyber-accent" />
+            {/* 六边形网络 Logo */}
+            <div className="w-24 h-24 relative flex items-center justify-center mb-4">
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                <defs>
+                  <linearGradient id="loginHexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#06b6d4" />
+                    <stop offset="50%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#8b5cf6" />
+                  </linearGradient>
+                </defs>
+                <polygon 
+                  points="50,2 93,25 93,75 50,98 7,75 7,25" 
+                  fill="rgba(6,182,212,0.1)" 
+                  stroke="url(#loginHexGradient)" 
+                  strokeWidth="2"
+                />
+                {/* 内部网络节点 */}
+                <circle cx="50" cy="20" r="6" fill="#06b6d4" />
+                <circle cx="80" cy="35" r="6" fill="#3b82f6" />
+                <circle cx="80" cy="65" r="6" fill="#8b5cf6" />
+                <circle cx="50" cy="80" r="6" fill="#ec4899" />
+                <circle cx="20" cy="65" r="6" fill="#f43f5e" />
+                <circle cx="20" cy="35" r="6" fill="#06b6d4" />
+                <circle cx="50" cy="50" r="8" fill="#3b82f6" />
+                {/* 连接线 */}
+                <line x1="50" y1="20" x2="80" y2="35" stroke="#06b6d4" strokeWidth="1.5" opacity="0.6" />
+                <line x1="80" y1="35" x2="80" y2="65" stroke="#3b82f6" strokeWidth="1.5" opacity="0.6" />
+                <line x1="80" y1="65" x2="50" y2="80" stroke="#8b5cf6" strokeWidth="1.5" opacity="0.6" />
+                <line x1="50" y1="80" x2="20" y2="65" stroke="#ec4899" strokeWidth="1.5" opacity="0.6" />
+                <line x1="20" y1="65" x2="20" y2="35" stroke="#f43f5e" strokeWidth="1.5" opacity="0.6" />
+                <line x1="20" y1="35" x2="50" y2="20" stroke="#06b6d4" strokeWidth="1.5" opacity="0.6" />
+                {/* 中心连接 */}
+                <line x1="50" y1="50" x2="50" y2="20" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
+                <line x1="50" y1="50" x2="80" y2="35" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
+                <line x1="50" y1="50" x2="80" y2="65" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
+                <line x1="50" y1="50" x2="50" y2="80" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
+                <line x1="50" y1="50" x2="20" y2="65" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
+                <line x1="50" y1="50" x2="20" y2="35" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
+              </svg>
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-wide font-mono mt-4">SENTINEL<span className="text-cyber-accent">GUARD</span></h1>
-            <p className="text-slate-400 text-sm mt-2">安全态势感知平台</p>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 bg-clip-text text-transparent mt-4">御链天鉴</h1>
+            <p className="text-slate-400 text-sm mt-2">网络安全智能分析及溯源系统</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

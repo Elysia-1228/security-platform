@@ -15,10 +15,6 @@ public class potentialThreatAlert {
     private Integer id;
     private String threatId;
     private Integer threatLevel;
-    private String attackType;
-    private String sourceIp;
-    private String targetIp;
-    private String details;
     private String impactScope;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
