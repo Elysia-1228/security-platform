@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Bar } from 'recharts';
-import { Filter, Download, RefreshCw, Loader2, FileCheck } from 'lucide-react';
+import { Filter, Download, RefreshCw, Loader2, FileCheck, Shield, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import { AnalysisService } from '../services/connector';
 
 const ThreatAnalysis: React.FC = () => {
@@ -96,14 +97,9 @@ const ThreatAnalysis: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-slide-up">
+    <div className="space-y-8 animate-slide-up">
       {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white font-mono">ANALYTICS<span className="text-cyber-accent">.VIEW</span></h2>
-          <p className="text-slate-400 text-sm">多维威胁流量分析大屏</p>
-        </div>
-        
+      <PageHeader title="威胁流量分析" subtitle="多维度威胁数据可视化大屏">
         <div className="flex gap-3">
            <button onClick={handleRefresh} className={`p-2.5 bg-cyber-800 border border-cyber-700 rounded-lg text-slate-300 hover:text-white hover:border-cyber-accent transition-all ${loading ? 'animate-spin text-cyber-accent' : ''}`}>
              <RefreshCw size={18} />
@@ -127,41 +123,93 @@ const ThreatAnalysis: React.FC = () => {
              )}
            </button>
         </div>
+      </PageHeader>
+
+      {/* 统计卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(0,20,40,0.95) 0%, rgba(0,40,60,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-cyan-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-cyan-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <Shield size={20} className="text-cyan-400" />
+              <span className="text-xs text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                实时
+              </span>
+            </div>
+            <p className="text-4xl font-mono font-bold text-white mt-3">{chartData.reduce((sum, d) => sum + (d.attacks || 0), 0)}</p>
+            <p className="text-sm text-slate-400 mt-1">检测到的威胁</p>
+          </div>
+        </div>
+
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(40,0,20,0.95) 0%, rgba(60,0,30,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-red-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-red-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10">
+            <AlertTriangle size={20} className="text-red-400" />
+            <p className="text-4xl font-mono font-bold text-red-400 mt-3">{Math.max(...chartData.map(d => d.attacks || 0), 0)}</p>
+            <p className="text-sm text-slate-400 mt-1">峰值攻击次数</p>
+          </div>
+        </div>
+
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(20,30,0,0.95) 0%, rgba(40,50,0,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-yellow-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-yellow-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10">
+            <TrendingUp size={20} className="text-yellow-400" />
+            <p className="text-4xl font-mono font-bold text-yellow-400 mt-3">{chartData.length > 0 ? Math.round(chartData.reduce((sum, d) => sum + (d.attacks || 0), 0) / chartData.length) : 0}</p>
+            <p className="text-sm text-slate-400 mt-1">平均攻击频率</p>
+          </div>
+        </div>
+
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(0,30,20,0.95) 0%, rgba(0,50,30,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-emerald-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-emerald-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10">
+            <Activity size={20} className="text-emerald-400" />
+            <p className="text-4xl font-mono font-bold text-emerald-400 mt-3">98.5%</p>
+            <p className="text-sm text-slate-400 mt-1">拦截成功率</p>
+          </div>
+        </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="glass-panel rounded-xl p-4 flex flex-wrap gap-6 items-center shadow-lg">
-        <div className="flex items-center gap-3">
-           <Filter size={16} className="text-cyber-accent" />
-           <span className="text-sm font-bold text-slate-300">维度筛选:</span>
-        </div>
-        
-        <div className="flex items-center gap-2">
-           <select className="bg-cyber-950 border border-cyber-700 rounded px-3 py-1.5 text-sm text-slate-300 outline-none hover:border-cyber-500 focus:border-cyber-accent transition-colors cursor-pointer" disabled={loading}>
-             <option>所有攻击类型</option>
-             <option>DDoS 洪水</option>
-             <option>SQL 注入</option>
-             <option>恶意软件通信</option>
-           </select>
-        </div>
+      <div className="relative rounded-2xl p-4 flex flex-wrap gap-6 items-center overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(0,10,20,0.95) 0%, rgba(0,20,30,0.9) 100%)'}}>
+        <div className="absolute inset-0 rounded-2xl border border-blue-500/20"></div>
+        <div className="relative z-10 flex flex-wrap gap-6 items-center w-full">
+          <div className="flex items-center gap-3">
+             <Filter size={16} className="text-cyan-400" />
+             <span className="text-sm font-bold text-slate-300">维度筛选:</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+             <select className="bg-black/30 border border-cyan-500/30 rounded-lg px-3 py-1.5 text-sm text-slate-300 outline-none hover:border-cyan-500/60 focus:border-cyan-400 transition-colors cursor-pointer" disabled={loading}>
+               <option>所有攻击类型</option>
+               <option>DDoS 洪水</option>
+               <option>SQL 注入</option>
+               <option>恶意软件通信</option>
+             </select>
+          </div>
 
-        <div className="h-6 w-px bg-cyber-700"></div>
+          <div className="h-6 w-px bg-cyan-500/20"></div>
 
-        <div className="flex items-center gap-2 bg-cyber-950 rounded-lg p-1 border border-cyber-800">
-           {['24h', '7d', '30d'].map(range => (
-             <button
-               key={range}
-               onClick={() => setTimeRange(range)}
-               disabled={loading}
-               className={`px-4 py-1 text-xs font-bold rounded transition-all ${
-                 timeRange === range 
-                   ? 'bg-cyber-700 text-white shadow-md' 
-                   : 'text-slate-500 hover:text-slate-300 disabled:opacity-50'
-               }`}
-             >
-               {range === '24h' ? '24小时' : range === '7d' ? '7天' : '30天'}
-             </button>
-           ))}
+          <div className="flex items-center gap-2 bg-black/30 rounded-lg p-1 border border-cyan-500/20">
+             {['24h', '7d', '30d'].map(range => (
+               <button
+                 key={range}
+                 onClick={() => setTimeRange(range)}
+                 disabled={loading}
+                 className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                   timeRange === range 
+                     ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30' 
+                     : 'text-slate-400 hover:text-white hover:bg-white/5'
+                 }`}
+               >
+                 {range === '24h' ? '24小时' : range === '7d' ? '7天' : '30天'}
+               </button>
+             ))}
+          </div>
         </div>
       </div>
 

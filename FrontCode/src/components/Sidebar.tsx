@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Zap
 } from 'lucide-react';
+import logoImg from '../assets/logo.png';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -21,7 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
     { to: '/', icon: LayoutDashboard, label: '首页' },
     { to: '/collection', icon: Server, label: '数据采集配置' },
     { to: '/analysis', icon: Activity, label: '威胁分析中心' },
-    { to: '/alerts', icon: ShieldAlert, label: '实时威胁预警' },
+    { to: '/alerts', icon: ShieldAlert, label: 'NIDS 网络入侵检测' },
     { to: '/tracing', icon: Map, label: '攻击溯源图谱' },
     { to: '/hids', icon: Server, label: 'HIDS 主机监控' },
     { to: '/reports', icon: FileText, label: '智能报告生成' },
@@ -31,47 +32,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout }) => {
   return (
     <aside className="w-72 bg-cyber-950 border-r border-cyber-800 flex flex-col h-screen fixed left-0 top-0 z-50 shadow-2xl shadow-cyber-900">
       {/* Brand Logo */}
-      <div className="h-20 border-b border-cyber-800 flex items-center px-6 gap-3 bg-gradient-to-r from-cyber-900 to-cyber-950">
-        {/* 六边形网络 Logo */}
-        <div className="w-12 h-12 relative flex items-center justify-center">
-          <svg viewBox="0 0 100 100" className="w-full h-full">
-            {/* 六边形外框 - 渐变边框 */}
-            <defs>
-              <linearGradient id="hexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#06b6d4" />
-                <stop offset="50%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#8b5cf6" />
-              </linearGradient>
-            </defs>
-            <polygon 
-              points="50,2 93,25 93,75 50,98 7,75 7,25" 
-              fill="transparent" 
-              stroke="url(#hexGradient)" 
-              strokeWidth="2"
-            />
-            {/* 内部网络节点 */}
-            <circle cx="50" cy="20" r="5" fill="#06b6d4" />
-            <circle cx="80" cy="35" r="5" fill="#3b82f6" />
-            <circle cx="80" cy="65" r="5" fill="#8b5cf6" />
-            <circle cx="50" cy="80" r="5" fill="#ec4899" />
-            <circle cx="20" cy="65" r="5" fill="#f43f5e" />
-            <circle cx="20" cy="35" r="5" fill="#06b6d4" />
-            <circle cx="50" cy="50" r="6" fill="#3b82f6" />
-            {/* 连接线 */}
-            <line x1="50" y1="20" x2="80" y2="35" stroke="#06b6d4" strokeWidth="1" opacity="0.6" />
-            <line x1="80" y1="35" x2="80" y2="65" stroke="#3b82f6" strokeWidth="1" opacity="0.6" />
-            <line x1="80" y1="65" x2="50" y2="80" stroke="#8b5cf6" strokeWidth="1" opacity="0.6" />
-            <line x1="50" y1="80" x2="20" y2="65" stroke="#ec4899" strokeWidth="1" opacity="0.6" />
-            <line x1="20" y1="65" x2="20" y2="35" stroke="#f43f5e" strokeWidth="1" opacity="0.6" />
-            <line x1="20" y1="35" x2="50" y2="20" stroke="#06b6d4" strokeWidth="1" opacity="0.6" />
-            {/* 中心连接 */}
-            <line x1="50" y1="50" x2="50" y2="20" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-            <line x1="50" y1="50" x2="80" y2="35" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-            <line x1="50" y1="50" x2="80" y2="65" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-            <line x1="50" y1="50" x2="50" y2="80" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-            <line x1="50" y1="50" x2="20" y2="65" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-            <line x1="50" y1="50" x2="20" y2="35" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-          </svg>
+      <div className="h-20 border-b border-cyber-800 flex items-center px-5 gap-4 bg-gradient-to-r from-cyber-900 to-cyber-950">
+        {/* Logo 图片 */}
+        <div className="w-14 h-14 relative flex items-center justify-center flex-shrink-0">
+          <img 
+            src={logoImg} 
+            alt="Logo" 
+            className="w-full h-full object-contain"
+            style={{ filter: 'drop-shadow(0 0 10px rgba(6, 182, 212, 0.5))' }}
+          />
         </div>
         <div>
           <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 bg-clip-text text-transparent">御链天鉴</h1>

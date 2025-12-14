@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Share2, Trash2, Edit2, Plus, X, Save, CheckCircle, AlertCircle, Users, Loader2 } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import { Organization } from '../types';
 import { OrgService } from '../services/connector'; // 引入真实的 Service
 
@@ -117,23 +118,68 @@ const OrgManagement: React.FC = () => {
   // ---------------- Render ----------------
 
   return (
-    <div className="space-y-8 animate-fade-in relative">
+    <div className="space-y-6 animate-fade-in relative">
       
+      {/* ---------------- 页面标题 ---------------- */}
+      <PageHeader title="组织信息管理" subtitle="管理当前账户所属的安全运营中心及权限">
+        <button 
+          onClick={() => handleOpenModal()}
+          className="flex items-center gap-2 bg-gradient-to-r from-cyber-accent to-blue-600 text-white px-5 py-2.5 rounded-lg font-bold hover:shadow-lg hover:shadow-cyber-accent/20 transition-all transform hover:-translate-y-0.5 active:scale-95"
+        >
+          <Plus size={18} /> 新增组织
+        </button>
+      </PageHeader>
+
+      {/* ---------------- 统计卡片 ---------------- */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(0,20,40,0.95) 0%, rgba(0,40,60,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-cyan-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-cyan-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center gap-3">
+            <Users size={24} className="text-cyan-400" />
+            <div>
+              <p className="text-4xl font-mono font-bold text-white">{orgs.length}</p>
+              <p className="text-sm text-slate-400 uppercase">组织总数</p>
+            </div>
+          </div>
+        </div>
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(0,30,20,0.95) 0%, rgba(0,50,30,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-emerald-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-emerald-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center gap-3">
+            <CheckCircle size={24} className="text-emerald-400" />
+            <div>
+              <p className="text-4xl font-mono font-bold text-emerald-400">{orgs.reduce((sum, o) => sum + o.memberCount, 0)}</p>
+              <p className="text-sm text-slate-400 uppercase">总成员数</p>
+            </div>
+          </div>
+        </div>
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(20,0,40,0.95) 0%, rgba(40,0,60,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-purple-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-purple-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center gap-3">
+            <Share2 size={24} className="text-purple-400" />
+            <div>
+              <p className="text-4xl font-mono font-bold text-purple-400">{shares.length}</p>
+              <p className="text-sm text-slate-400 uppercase">待处理共享</p>
+            </div>
+          </div>
+        </div>
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(30,20,0,0.95) 0%, rgba(50,30,0,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-amber-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-amber-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center gap-3">
+            <AlertCircle size={24} className="text-amber-400" />
+            <div>
+              <p className="text-4xl font-mono font-bold text-amber-400">{orgs.filter(o => o.adminPermission).length}</p>
+              <p className="text-sm text-slate-400 uppercase">管理员组织</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ---------------- 组织列表区域 ---------------- */}
       <section>
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-white">组织信息管理</h2>
-            <p className="text-slate-400 text-sm mt-1">管理当前账户所属的安全运营中心及权限。</p>
-          </div>
-          <button 
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-gradient-to-r from-cyber-accent to-blue-600 text-white px-5 py-2.5 rounded-lg font-bold hover:shadow-lg hover:shadow-cyber-accent/20 transition-all transform hover:-translate-y-0.5 active:scale-95"
-          >
-            <Plus size={18} /> 新增组织
-          </button>
-        </div>
-
         {loading ? (
            <div className="p-20 flex flex-col items-center justify-center text-cyber-accent">
                <Loader2 size={48} className="animate-spin mb-4" />

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, User, ArrowRight, Info } from 'lucide-react';
+import { Lock, User, ArrowRight, Info } from 'lucide-react';
 import { AuthService } from '../services/connector';
+import logoImg from '../assets/logo.png';
 
 const noiseBg = "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.4'/%3E%3C/svg%3E";
 
@@ -48,45 +49,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="absolute inset-0 bg-gradient-to-r from-cyber-accent to-blue-600 rounded-2xl blur opacity-30"></div>
         <div className="relative bg-cyber-900/80 backdrop-blur-xl border border-cyber-700/50 p-8 rounded-2xl shadow-2xl">
           <div className="flex flex-col items-center mb-10">
-            {/* 六边形网络 Logo */}
-            <div className="w-24 h-24 relative flex items-center justify-center mb-4">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <defs>
-                  <linearGradient id="loginHexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#06b6d4" />
-                    <stop offset="50%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
-                  </linearGradient>
-                </defs>
-                <polygon 
-                  points="50,2 93,25 93,75 50,98 7,75 7,25" 
-                  fill="rgba(6,182,212,0.1)" 
-                  stroke="url(#loginHexGradient)" 
-                  strokeWidth="2"
-                />
-                {/* 内部网络节点 */}
-                <circle cx="50" cy="20" r="6" fill="#06b6d4" />
-                <circle cx="80" cy="35" r="6" fill="#3b82f6" />
-                <circle cx="80" cy="65" r="6" fill="#8b5cf6" />
-                <circle cx="50" cy="80" r="6" fill="#ec4899" />
-                <circle cx="20" cy="65" r="6" fill="#f43f5e" />
-                <circle cx="20" cy="35" r="6" fill="#06b6d4" />
-                <circle cx="50" cy="50" r="8" fill="#3b82f6" />
-                {/* 连接线 */}
-                <line x1="50" y1="20" x2="80" y2="35" stroke="#06b6d4" strokeWidth="1.5" opacity="0.6" />
-                <line x1="80" y1="35" x2="80" y2="65" stroke="#3b82f6" strokeWidth="1.5" opacity="0.6" />
-                <line x1="80" y1="65" x2="50" y2="80" stroke="#8b5cf6" strokeWidth="1.5" opacity="0.6" />
-                <line x1="50" y1="80" x2="20" y2="65" stroke="#ec4899" strokeWidth="1.5" opacity="0.6" />
-                <line x1="20" y1="65" x2="20" y2="35" stroke="#f43f5e" strokeWidth="1.5" opacity="0.6" />
-                <line x1="20" y1="35" x2="50" y2="20" stroke="#06b6d4" strokeWidth="1.5" opacity="0.6" />
-                {/* 中心连接 */}
-                <line x1="50" y1="50" x2="50" y2="20" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-                <line x1="50" y1="50" x2="80" y2="35" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-                <line x1="50" y1="50" x2="80" y2="65" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-                <line x1="50" y1="50" x2="50" y2="80" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-                <line x1="50" y1="50" x2="20" y2="65" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-                <line x1="50" y1="50" x2="20" y2="35" stroke="#3b82f6" strokeWidth="1" opacity="0.4" />
-              </svg>
+            {/* Logo 图片 */}
+            <div className="w-28 h-28 relative flex items-center justify-center mb-4">
+              <img 
+                src={logoImg} 
+                alt="Logo" 
+                className="w-full h-full object-contain"
+                style={{ filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.6))' }}
+              />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 bg-clip-text text-transparent mt-4">御链天鉴</h1>
             <p className="text-slate-400 text-sm mt-2">网络安全智能分析及溯源系统</p>

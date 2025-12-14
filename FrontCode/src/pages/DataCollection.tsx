@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, PlayCircle, StopCircle, Loader2, X, Save, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, StopCircle, Loader2, X, Save, RefreshCw, Server, Activity, Pause, Wifi, Database, Clock } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import { HostCollectionConfig } from '../types';
 import { ConfigService } from '../services/connector';
 
@@ -68,87 +69,193 @@ const DataCollection: React.FC = () => {
     }
   };
 
+  // 统计数据
+  const runningCount = hosts.filter(h => h.collectStatus === 1).length;
+  const pausedCount = hosts.filter(h => h.collectStatus === 2).length;
+  const totalCount = hosts.length;
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white font-mono">COLLECTION<span className="text-cyber-accent">.MANAGER</span></h2>
-          <p className="text-slate-400 text-sm mt-1">云外主机采集节点配置中心</p>
-        </div>
+    <div className="space-y-8 animate-fade-in">
+      {/* 页面头部 */}
+      <PageHeader title="采集节点配置" subtitle="分布式数据采集探针管理中心">
         <div className="flex gap-3">
-          <button onClick={fetchHosts} className="p-2.5 bg-cyber-800 border border-cyber-700 rounded-lg hover:text-white text-slate-400 transition-colors">
-            <RefreshCw size={18} />
+          <button 
+            onClick={fetchHosts} 
+            className="p-2.5 bg-cyber-900/80 border border-cyan-500/30 rounded-lg hover:border-cyan-500/60 hover:text-cyan-400 text-slate-400 transition-all hover:shadow-lg hover:shadow-cyan-500/10"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
           </button>
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-cyber-accent to-blue-600 text-white px-5 py-2.5 rounded-lg font-bold shadow-lg hover:shadow-cyber-accent/20 transition-all active:scale-95"
+            className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-5 py-2.5 rounded-lg font-bold shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 transition-all active:scale-95 hover:-translate-y-0.5"
           >
             <Plus size={18} /> 新增节点
           </button>
         </div>
+      </PageHeader>
+
+      {/* 统计卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="relative bg-gradient-to-br from-cyber-900/80 to-cyber-950/80 p-6 rounded-2xl border border-cyan-500/20 overflow-hidden group hover:border-cyan-500/40 transition-all">
+          <div className="absolute -right-6 -top-6 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <p className="text-slate-400 text-sm font-medium">总节点数</p>
+              <p className="text-4xl font-bold text-white mt-2">{totalCount}</p>
+            </div>
+            <div className="p-4 bg-cyan-500/10 rounded-xl border border-cyan-500/20">
+              <Server size={28} className="text-cyan-400" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="relative bg-gradient-to-br from-cyber-900/80 to-cyber-950/80 p-6 rounded-2xl border border-emerald-500/20 overflow-hidden group hover:border-emerald-500/40 transition-all">
+          <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <p className="text-slate-400 text-sm font-medium">运行中</p>
+              <p className="text-4xl font-bold text-emerald-400 mt-2">{runningCount}</p>
+            </div>
+            <div className="p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+              <Activity size={28} className="text-emerald-400" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="relative bg-gradient-to-br from-cyber-900/80 to-cyber-950/80 p-6 rounded-2xl border border-amber-500/20 overflow-hidden group hover:border-amber-500/40 transition-all">
+          <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <p className="text-slate-400 text-sm font-medium">已暂停</p>
+              <p className="text-4xl font-bold text-amber-400 mt-2">{pausedCount}</p>
+            </div>
+            <div className="p-4 bg-amber-500/10 rounded-xl border border-amber-500/20">
+              <Pause size={28} className="text-amber-400" />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="glass-panel rounded-xl overflow-hidden min-h-[400px]">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-cyber-900/80 text-slate-400 uppercase text-xs font-bold border-b border-cyber-700">
-            <tr>
-              <th className="p-5 pl-6">ID</th>
-              <th className="p-5">主机 IP</th>
-              <th className="p-5">采集频率</th>
-              <th className="p-5">运行状态</th>
-              <th className="p-5">创建时间</th>
-              <th className="p-5 text-right pr-6">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-cyber-700/50 text-slate-300">
-            {loading ? (
-              <tr><td colSpan={6} className="p-10 text-center text-slate-500"><Loader2 className="animate-spin inline mr-2"/> 加载配置中...</td></tr>
-            ) : (hosts || []).length === 0 ? (
-              <tr><td colSpan={6} className="p-10 text-center text-slate-500"><AlertCircle className="inline mr-2 mb-1"/> 暂无数据，请尝试新增节点</td></tr>
-            ) : (
-              hosts.map(host => (
-                <tr key={host.id} className="hover:bg-cyber-800/30 transition-colors group">
-                  <td className="p-5 pl-6 font-mono text-xs text-slate-500">#{host.id}</td>
-                  <td className="p-5 font-bold text-white font-mono tracking-wide">{host.hostIp}</td>
-                  <td className="p-5 text-sm">{host.collectFreq} min</td>
-                  <td className="p-5">
-                    <span className={`inline-flex items-center gap-2 px-2.5 py-1 rounded text-xs font-bold border ${
-                      host.collectStatus === 1 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 
-                      host.collectStatus === 3 ? 'bg-red-500/10 text-red-400 border-red-500/30' : 
-                      'bg-slate-800 text-slate-400 border-slate-700'
-                    }`}>
-                      {host.collectStatus === 1 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/>}
-                      {host.collectStatus === 1 ? 'Running' : host.collectStatus === 2 ? 'Paused' : host.collectStatus === 3 ? 'Error' : 'Stopped'}
-                    </span>
+      {/* 节点列表 */}
+      <div className="relative bg-gradient-to-br from-cyber-900/60 to-cyber-950/60 rounded-2xl border border-cyan-500/20 overflow-hidden backdrop-blur-sm">
+        {/* 表头发光条 */}
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+        
+        <div className="p-6 border-b border-cyan-500/10 flex items-center justify-between bg-gradient-to-r from-cyan-500/5 to-transparent">
+          <div className="flex items-center gap-3">
+            <Database size={20} className="text-cyan-400" />
+            <h3 className="text-lg font-bold text-white">节点列表</h3>
+            <span className="text-xs px-2 py-1 bg-cyan-500/10 text-cyan-400 rounded-full border border-cyan-500/20">
+              共 {totalCount} 个
+            </span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-cyber-950/50 text-slate-400 uppercase text-xs font-bold border-b border-cyan-500/10">
+              <tr>
+                <th className="p-5 pl-6">
+                  <span className="flex items-center gap-2"><Wifi size={14} className="text-cyan-500/50" /> 节点标识</span>
+                </th>
+                <th className="p-5">主机 IP 地址</th>
+                <th className="p-5">
+                  <span className="flex items-center gap-2"><Clock size={14} className="text-cyan-500/50" /> 采集周期</span>
+                </th>
+                <th className="p-5">运行状态</th>
+                <th className="p-5">创建时间</th>
+                <th className="p-5 text-right pr-6">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-cyan-500/5 text-slate-300">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-16 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <Loader2 size={40} className="animate-spin text-cyan-500/50"/>
+                      <p className="text-slate-500">正在加载节点配置...</p>
+                    </div>
                   </td>
-                  <td className="p-5 text-xs text-slate-500 font-mono">{host.createTime || '-'}</td>
-                  <td className="p-5 text-right pr-6">
-                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                </tr>
+              ) : (hosts || []).length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-16 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="p-6 bg-cyan-500/5 rounded-full border border-cyan-500/10">
+                        <Server size={40} className="text-cyan-500/30"/>
+                      </div>
+                      <p className="text-slate-500">暂无采集节点</p>
                       <button 
-                        onClick={() => toggleStatus(host)}
-                        className={`p-2 rounded border transition-colors ${
-                          host.collectStatus === 1 
-                            ? 'text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10' 
-                            : 'text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10'
-                        }`}
-                        title={host.collectStatus === 1 ? "暂停采集" : "启动采集"}
+                        onClick={() => setIsModalOpen(true)}
+                        className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
                       >
-                        {host.collectStatus === 1 ? <StopCircle size={16} /> : <PlayCircle size={16} />}
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(host.id)}
-                        className="p-2 text-red-400 border border-red-500/30 rounded hover:bg-red-500/10 transition-colors"
-                        title="删除配置"
-                      >
-                        <Trash2 size={16} />
+                        <Plus size={16} /> 点击添加第一个节点
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                hosts.map((host, index) => (
+                  <tr key={host.id} className="hover:bg-cyan-500/5 transition-all group">
+                    <td className="p-5 pl-6">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${
+                          host.collectStatus === 1 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
+                          'bg-slate-800/50 text-slate-500 border border-slate-700'
+                        }`}>
+                          {String(index + 1).padStart(2, '0')}
+                        </div>
+                        <span className="font-mono text-xs text-slate-500">#{host.id}</span>
+                      </div>
+                    </td>
+                    <td className="p-5">
+                      <span className="font-mono text-base text-white bg-cyber-950/50 px-3 py-1.5 rounded-lg border border-cyan-500/10">
+                        {host.hostIp}
+                      </span>
+                    </td>
+                    <td className="p-5">
+                      <span className="text-cyan-400 font-medium">{host.collectFreq}</span>
+                      <span className="text-slate-500 text-sm ml-1">分钟/次</span>
+                    </td>
+                    <td className="p-5">
+                      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold ${
+                        host.collectStatus === 1 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/10' : 
+                        host.collectStatus === 3 ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 
+                        'bg-slate-800/50 text-slate-400 border border-slate-700'
+                      }`}>
+                        {host.collectStatus === 1 && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500"/>}
+                        {host.collectStatus === 1 ? '运行中' : host.collectStatus === 2 ? '已暂停' : host.collectStatus === 3 ? '异常' : '已停止'}
+                      </span>
+                    </td>
+                    <td className="p-5 text-sm text-slate-500 font-mono">{host.createTime || '-'}</td>
+                    <td className="p-5 text-right pr-6">
+                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                        <button 
+                          onClick={() => toggleStatus(host)}
+                          className={`p-2.5 rounded-lg border transition-all hover:scale-105 ${
+                            host.collectStatus === 1 
+                              ? 'text-amber-400 border-amber-500/30 hover:bg-amber-500/10 hover:shadow-lg hover:shadow-amber-500/10' 
+                              : 'text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 hover:shadow-lg hover:shadow-emerald-500/10'
+                          }`}
+                          title={host.collectStatus === 1 ? "暂停采集" : "启动采集"}
+                        >
+                          {host.collectStatus === 1 ? <StopCircle size={18} /> : <PlayCircle size={18} />}
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(host.id)}
+                          className="p-2.5 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 hover:shadow-lg hover:shadow-red-500/10 transition-all hover:scale-105"
+                          title="删除节点"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal */}

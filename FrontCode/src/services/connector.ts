@@ -87,15 +87,21 @@ api.interceptors.response.use(
 export const AuthService = {
   login: async (username: string, password: string): Promise<string> => {
     // 调用后端登录接口
-    // 假设后端返回结构: { token: "eyJh..." } 或 { data: { token: "..." } }
+    // 后端返回结构: { code: 1, msg: null, data: { token: "...", userInfo: {...} } }
     const response = await api.post(ENDPOINTS.AUTH_LOGIN, { username, password });
     
+    // 检查业务错误码
+    if (response.data?.code !== 1) {
+      throw new Error(response.data?.msg || '登录失败');
+    }
+    
     // 根据实际后端返回结构获取 Token
-    const token = response.data?.token || response.data?.data?.token;
+    const token = response.data?.data?.token;
+    const userInfo = response.data?.data?.userInfo;
     
     if (token) {
       localStorage.setItem('auth_token', token);
-      localStorage.setItem('user_info', JSON.stringify({ username }));
+      localStorage.setItem('user_info', JSON.stringify(userInfo || { username }));
       return token;
     } else {
       throw new Error('无效的响应格式：未找到 Token');
@@ -328,7 +334,7 @@ export const ThreatService = {
         const response = await api.get(ENDPOINTS.THREAT_HISTORY, {
             params: {
                 pageNum: 1,
-                pageSize: 100 // 获取最近100条
+                pageSize: 1000 // 获取最近1000条
             }
         });
         
@@ -362,12 +368,12 @@ export const ThreatService = {
                 }
             }
             
-            // 映射 RiskLevel
+            // 映射 RiskLevel（与实时数据保持一致：4-5高危，3中危，1-2低危）
             let riskLevel = 'Medium';
             const level = Number(item.threatLevel);
-            if (level === 1) riskLevel = 'Low';
-            else if (level === 2) riskLevel = 'Medium';
-            else if (level >= 3) riskLevel = 'High';
+            if (level >= 4) riskLevel = 'High';       // severity 4-5 高危
+            else if (level === 3) riskLevel = 'Medium'; // severity 3 中危
+            else riskLevel = 'Low';                    // severity 1-2 低危
 
             return {
                 id: item.threatId || String(item.id),
@@ -506,15 +512,16 @@ export class IDSSocket {
             }
         }
 
-        // 映射 RiskLevel
+        // 映射 RiskLevel（severity 4-5 为高危，3 为中危，1-2 为低危）
         let riskLevel = 'Medium';
         if (rawData.threatLevel) {
-            switch (Number(rawData.threatLevel)) {
-                case 1: riskLevel = 'Low'; break;
-                case 2: riskLevel = 'Medium'; break;
-                case 3: riskLevel = 'High'; break;
-                case 4: riskLevel = 'High'; break;
-                default: riskLevel = 'Medium';
+            const level = Number(rawData.threatLevel);
+            if (level >= 4) {
+                riskLevel = 'High';  // severity 4-5 都是高危
+            } else if (level === 3) {
+                riskLevel = 'Medium'; // severity 3 是中危
+            } else {
+                riskLevel = 'Low';  // severity 1-2 是低危
             }
         }
 

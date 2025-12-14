@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MOCK_THREATS } from '../utils/constants';
-import { AlertTriangle, ShieldX, Eye, ChevronDown, ChevronUp, Wifi, WifiOff, Activity, Loader2, Unlock, List, Trash2, Plus, X, Brain, Send, Sparkles } from 'lucide-react';
+import { AlertTriangle, ShieldX, Eye, ChevronDown, ChevronUp, Wifi, WifiOff, Activity, Loader2, Unlock, List, Trash2, Plus, X, Brain, Send, Sparkles, ArrowLeft, ChevronRight } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import { ThreatEvent, RiskLevel } from '../types';
 import { IDSSocket, ThreatService } from '../services/connector';
 import ReactMarkdown from 'react-markdown';
@@ -670,12 +671,20 @@ const TraceModal: React.FC<TraceModalProps> = ({ isOpen, onClose, threat, loadin
   );
 };
 
+// 视图模式类型
+type ViewMode = 'overview' | 'riskLevel' | 'attackTypeOverview' | 'attackTypeDetail';
+
 const ThreatAlerts: React.FC = () => {
   const [threats, setThreats] = useState<ThreatEvent[]>([]);
   const [loading, setLoading] = useState(true); 
   const [isLive, setIsLive] = useState(false); 
   const [wsConnected, setWsConnected] = useState(false); // 真实连接状态
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  // 多层级导航状态
+  const [viewMode, setViewMode] = useState<ViewMode>('overview');
+  const [selectedRiskLevel, setSelectedRiskLevel] = useState<RiskLevel | null>(null);
+  const [selectedAttackType, setSelectedAttackType] = useState<string | null>(null);
   
   const [processingAction, setProcessingAction] = useState<{id: string, type: 'block' | 'resolve' | 'unblock'} | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -976,27 +985,21 @@ const ThreatAlerts: React.FC = () => {
   return (
     <div className="space-y-6 h-[calc(100vh-140px)] flex flex-col">
        {/* 头部控制栏 */}
-       <div className="flex justify-between items-center shrink-0">
-         <div>
-           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-             潜在威胁预警 
-             {wsConnected && <span className="flex h-3 w-3 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-             </span>}
-           </h2>
-           <p className="text-slate-400 text-sm mt-1">IDS 实时入侵检测日志流</p>
-         </div>
-         
-         <div className="flex items-center gap-4">
+       <PageHeader 
+         title="NIDS 网络入侵检测" 
+         subtitle="网络流量实时威胁分析" 
+         showLive={wsConnected}
+         liveText="实时监控中"
+       >
+         <div className="flex items-center gap-3">
             <button 
               onClick={() => setShowBlacklist(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-600 bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-xs font-bold hover:bg-cyan-500/20 hover:border-cyan-500/50 transition-all"
             >
               <List size={14} /> 防火墙黑名单
             </button>
 
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-all ${
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-xs font-mono transition-all ${
               wsConnected 
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
                 : 'bg-red-500/10 border-red-500/30 text-red-400'
@@ -1004,28 +1007,338 @@ const ThreatAlerts: React.FC = () => {
               {wsConnected ? <Wifi size={14} className="animate-pulse" /> : <WifiOff size={14} />}
               {wsConnected ? 'IDS_LINK_ACTIVE' : 'IDS_LINK_DOWN'}
             </div>
+         </div>
+       </PageHeader>
 
-            <button 
-              disabled={true} // 按钮不再具有交互功能，仅作为状态展示
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all shadow-lg cursor-default opacity-80 ${
-                 wsConnected
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                  : 'bg-slate-700 text-slate-400 border border-slate-600'
-              }`}
-            >
-              {wsConnected ? (
-                <> <Activity size={18} className="animate-pulse" /> 实时监控中 </>
-              ) : (
-                <> <Loader2 size={18} className="animate-spin" /> 连接中... </>
-              )}
-            </button>
+       {/* 统计卡片 - 可点击进入详情 */}
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <div 
+           className="relative rounded-xl p-4 overflow-hidden cursor-pointer group hover:scale-[1.02] transition-all"
+           style={{background: 'linear-gradient(145deg, rgba(40,0,0,0.95) 0%, rgba(60,0,10,0.9) 100%)'}}
+           onClick={() => { setSelectedRiskLevel(RiskLevel.HIGH); setViewMode('riskLevel'); setSelectedAttackType(null); }}
+         >
+           <div className="absolute inset-0 rounded-xl border border-red-500/30 group-hover:border-red-500/60"></div>
+           <div className="relative z-10 flex items-center justify-between">
+             <div className="flex items-center gap-3">
+               <AlertTriangle size={24} className="text-red-400" />
+               <div>
+                 <p className="text-4xl font-mono font-bold text-red-400">{threats.filter(t => t.riskLevel === RiskLevel.HIGH).length}</p>
+                 <p className="text-sm text-slate-400 uppercase">高危威胁</p>
+               </div>
+             </div>
+             <ChevronRight size={20} className="text-red-400/50 group-hover:text-red-400 group-hover:translate-x-1 transition-all" />
+           </div>
+         </div>
+         <div 
+           className="relative rounded-xl p-4 overflow-hidden cursor-pointer group hover:scale-[1.02] transition-all"
+           style={{background: 'linear-gradient(145deg, rgba(40,20,0,0.95) 0%, rgba(60,30,0,0.9) 100%)'}}
+           onClick={() => { setSelectedRiskLevel(RiskLevel.MEDIUM); setViewMode('riskLevel'); setSelectedAttackType(null); }}
+         >
+           <div className="absolute inset-0 rounded-xl border border-orange-500/30 group-hover:border-orange-500/60"></div>
+           <div className="relative z-10 flex items-center justify-between">
+             <div className="flex items-center gap-3">
+               <Eye size={24} className="text-orange-400" />
+               <div>
+                 <p className="text-4xl font-mono font-bold text-orange-400">{threats.filter(t => t.riskLevel === RiskLevel.MEDIUM).length}</p>
+                 <p className="text-sm text-slate-400 uppercase">中危威胁</p>
+               </div>
+             </div>
+             <ChevronRight size={20} className="text-orange-400/50 group-hover:text-orange-400 group-hover:translate-x-1 transition-all" />
+           </div>
+         </div>
+         <div 
+           className="relative rounded-xl p-4 overflow-hidden cursor-pointer group hover:scale-[1.02] transition-all"
+           style={{background: 'linear-gradient(145deg, rgba(0,20,40,0.95) 0%, rgba(0,30,50,0.9) 100%)'}}
+           onClick={() => { setSelectedRiskLevel(RiskLevel.LOW); setViewMode('riskLevel'); setSelectedAttackType(null); }}
+         >
+           <div className="absolute inset-0 rounded-xl border border-blue-500/30 group-hover:border-blue-500/60"></div>
+           <div className="relative z-10 flex items-center justify-between">
+             <div className="flex items-center gap-3">
+               <Activity size={24} className="text-blue-400" />
+               <div>
+                 <p className="text-4xl font-mono font-bold text-blue-400">{threats.filter(t => t.riskLevel === RiskLevel.LOW).length}</p>
+                 <p className="text-sm text-slate-400 uppercase">低危威胁</p>
+               </div>
+             </div>
+             <ChevronRight size={20} className="text-blue-400/50 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+           </div>
+         </div>
+         <div className="relative rounded-xl p-4 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(0,30,20,0.95) 0%, rgba(0,50,30,0.9) 100%)'}}>
+           <div className="absolute inset-0 rounded-xl border border-emerald-500/30"></div>
+           <div className="relative z-10 flex items-center gap-3">
+             <Unlock size={24} className="text-emerald-400" />
+             <div>
+               <p className="text-4xl font-mono font-bold text-emerald-400">{blockedIps.length}</p>
+               <p className="text-sm text-slate-400 uppercase">已封禁IP</p>
+             </div>
+           </div>
          </div>
        </div>
+
+       {/* 导航面包屑 */}
+       {viewMode !== 'overview' && (
+         <div className="flex items-center gap-2 text-sm flex-wrap">
+           <button 
+             onClick={() => { setViewMode('overview'); setSelectedRiskLevel(null); setSelectedAttackType(null); }}
+             className="flex items-center gap-1 px-3 py-1.5 bg-cyber-800 border border-cyber-700 rounded-lg hover:bg-cyber-700 transition-colors text-slate-400 hover:text-white"
+           >
+             <ArrowLeft size={14} /> 返回总览
+           </button>
+           <span className="text-slate-600">/</span>
+           <button
+             onClick={() => { setViewMode('riskLevel'); setSelectedAttackType(null); }}
+             className={`px-2 py-1 rounded cursor-pointer hover:opacity-80 transition-opacity ${
+               selectedRiskLevel === RiskLevel.HIGH ? 'bg-red-500/20 text-red-400' :
+               selectedRiskLevel === RiskLevel.MEDIUM ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'
+             }`}
+           >
+             {selectedRiskLevel === RiskLevel.HIGH ? '高危威胁' : selectedRiskLevel === RiskLevel.MEDIUM ? '中危威胁' : '低危威胁'}
+           </button>
+           {selectedAttackType && (
+             <>
+               <span className="text-slate-600">/</span>
+               <button
+                 onClick={() => setViewMode('attackTypeOverview')}
+                 className="px-2 py-1 rounded bg-purple-500/20 text-purple-400 cursor-pointer hover:opacity-80 transition-opacity"
+               >
+                 {selectedAttackType}
+               </button>
+               {viewMode === 'attackTypeDetail' && (
+                 <>
+                   <span className="text-slate-600">/</span>
+                   <span className="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400">详细记录</span>
+                 </>
+               )}
+             </>
+           )}
+         </div>
+       )}
        
-       {/* 列表区域 */}
+       {/* 攻击类型分类视图 - 当选择了风险等级但未选择攻击类型时显示 */}
+       {viewMode === 'riskLevel' && selectedRiskLevel && !selectedAttackType && (
+         <div className="space-y-4">
+           <h3 className="text-lg font-bold text-white flex items-center gap-2">
+             <Activity size={20} className={
+               selectedRiskLevel === RiskLevel.HIGH ? 'text-red-400' :
+               selectedRiskLevel === RiskLevel.MEDIUM ? 'text-orange-400' : 'text-blue-400'
+             } />
+             攻击类型分布
+           </h3>
+           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+             {(() => {
+               // 统计该风险等级下的攻击类型
+               const filteredThreats = threats.filter(t => t.riskLevel === selectedRiskLevel);
+               const typeCount: Record<string, number> = {};
+               filteredThreats.forEach(t => {
+                 typeCount[t.type] = (typeCount[t.type] || 0) + 1;
+               });
+               const sortedTypes = Object.entries(typeCount).sort((a, b) => b[1] - a[1]);
+               
+               if (sortedTypes.length === 0) {
+                 return <p className="col-span-full text-center text-slate-500 py-8">该风险等级暂无威胁记录</p>;
+               }
+               
+               return sortedTypes.map(([type, count]) => (
+                 <div
+                   key={type}
+                   onClick={() => { setSelectedAttackType(type); setViewMode('attackTypeOverview'); }}
+                   className={`relative rounded-xl p-4 overflow-hidden cursor-pointer group hover:scale-[1.02] transition-all ${
+                     selectedRiskLevel === RiskLevel.HIGH ? 'bg-gradient-to-br from-red-950/50 to-cyber-950' :
+                     selectedRiskLevel === RiskLevel.MEDIUM ? 'bg-gradient-to-br from-orange-950/50 to-cyber-950' : 'bg-gradient-to-br from-blue-950/50 to-cyber-950'
+                   }`}
+                 >
+                   <div className={`absolute inset-0 rounded-xl border ${
+                     selectedRiskLevel === RiskLevel.HIGH ? 'border-red-500/30 group-hover:border-red-500/60' :
+                     selectedRiskLevel === RiskLevel.MEDIUM ? 'border-orange-500/30 group-hover:border-orange-500/60' : 'border-blue-500/30 group-hover:border-blue-500/60'
+                   }`}></div>
+                   <div className="relative z-10">
+                     <div className="flex items-center justify-between mb-2">
+                       <span className={`text-3xl font-bold font-mono ${
+                         selectedRiskLevel === RiskLevel.HIGH ? 'text-red-400' :
+                         selectedRiskLevel === RiskLevel.MEDIUM ? 'text-orange-400' : 'text-blue-400'
+                       }`}>{count}</span>
+                       <ChevronRight size={18} className="text-slate-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                     </div>
+                     <p className="text-white font-medium truncate">{type}</p>
+                     <p className="text-xs text-slate-500 mt-1">点击查看详情</p>
+                   </div>
+                 </div>
+               ));
+             })()}
+           </div>
+         </div>
+       )}
+
+       {/* 攻击类型概览视图 - 详细提纲页面 */}
+       {viewMode === 'attackTypeOverview' && selectedRiskLevel && selectedAttackType && (
+         <div className="space-y-6">
+           {(() => {
+             const typeThreats = threats.filter(t => t.riskLevel === selectedRiskLevel && t.type === selectedAttackType);
+             const totalCount = typeThreats.length;
+             
+             // 统计源IP
+             const sourceIpCount: Record<string, number> = {};
+             typeThreats.forEach(t => {
+               sourceIpCount[t.sourceIp] = (sourceIpCount[t.sourceIp] || 0) + 1;
+             });
+             const topSourceIps = Object.entries(sourceIpCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+             
+             // 统计目标IP
+             const targetIpCount: Record<string, number> = {};
+             typeThreats.forEach(t => {
+               targetIpCount[t.targetIp] = (targetIpCount[t.targetIp] || 0) + 1;
+             });
+             const topTargetIps = Object.entries(targetIpCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+             
+             // 时间分布（最近24小时按小时统计）
+             const hourCount: Record<number, number> = {};
+             for (let i = 0; i < 24; i++) hourCount[i] = 0;
+             typeThreats.forEach(t => {
+               const hour = parseInt(t.timestamp.split(' ')[1]?.split(':')[0] || '0');
+               hourCount[hour] = (hourCount[hour] || 0) + 1;
+             });
+             const maxHourCount = Math.max(...Object.values(hourCount), 1);
+             
+             const riskColor = selectedRiskLevel === RiskLevel.HIGH ? 'red' : selectedRiskLevel === RiskLevel.MEDIUM ? 'orange' : 'blue';
+             
+             return (
+               <>
+                 {/* 头部概览 */}
+                 <div className={`relative rounded-2xl p-6 overflow-hidden`} style={{background: `linear-gradient(145deg, rgba(${riskColor === 'red' ? '60,0,0' : riskColor === 'orange' ? '60,30,0' : '0,20,60'},0.95) 0%, rgba(10,15,30,0.9) 100%)`}}>
+                   <div className={`absolute inset-0 rounded-2xl border border-${riskColor}-500/30`}></div>
+                   <div className="relative z-10">
+                     <div className="flex items-center justify-between mb-6">
+                       <div>
+                         <h2 className={`text-3xl font-bold text-${riskColor}-400`}>{selectedAttackType}</h2>
+                         <p className="text-slate-400 mt-1">攻击类型详细分析报告</p>
+                       </div>
+                       <div className="text-right">
+                         <p className={`text-5xl font-mono font-bold text-${riskColor}-400`}>{totalCount}</p>
+                         <p className="text-slate-500 text-sm">总攻击次数</p>
+                       </div>
+                     </div>
+                     
+                     {/* 攻击特征描述 */}
+                     <div className="bg-black/30 rounded-xl p-4 mb-4">
+                       <h4 className="text-white font-bold mb-2 flex items-center gap-2">
+                         <Brain size={16} className={`text-${riskColor}-400`} /> 攻击特征分析
+                       </h4>
+                       <p className="text-slate-400 text-sm leading-relaxed">
+                         {selectedAttackType.toLowerCase().includes('ddos') && '分布式拒绝服务攻击，通过大量请求耗尽目标服务器资源，导致正常用户无法访问。建议启用流量清洗和速率限制。'}
+                         {selectedAttackType.toLowerCase().includes('bot') && '自动化机器人攻击，可能进行凭证填充、数据爬取或恶意扫描。建议部署Bot防护和验证码机制。'}
+                         {selectedAttackType.toLowerCase().includes('unknown') && '未知攻击类型，可能是新型攻击或变种。建议深入分析流量特征并更新检测规则。'}
+                         {selectedAttackType.toLowerCase().includes('hulk') && 'HTTP Unbearable Load King攻击，针对Web服务器的DoS攻击。建议配置WAF规则拦截异常请求。'}
+                         {selectedAttackType.toLowerCase().includes('sql') && 'SQL注入攻击，试图通过恶意SQL语句获取或破坏数据库。建议使用参数化查询和WAF防护。'}
+                         {!selectedAttackType.toLowerCase().includes('ddos') && !selectedAttackType.toLowerCase().includes('bot') && !selectedAttackType.toLowerCase().includes('unknown') && !selectedAttackType.toLowerCase().includes('hulk') && !selectedAttackType.toLowerCase().includes('sql') && '该类型攻击可能对系统安全造成威胁，建议及时分析并采取防护措施。'}
+                       </p>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* 统计卡片网格 */}
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   {/* 24小时攻击趋势 */}
+                   <div className="md:col-span-2 bg-cyber-900/60 rounded-xl p-4 border border-cyber-700/50">
+                     <h4 className="text-white font-bold mb-4 flex items-center gap-2">
+                       <Activity size={16} className="text-cyan-400" /> 24小时攻击趋势
+                     </h4>
+                     <div className="flex items-end gap-1 h-24">
+                       {Object.entries(hourCount).map(([hour, count]) => (
+                         <div key={hour} className="flex-1 flex flex-col items-center">
+                           <div 
+                             className={`w-full bg-gradient-to-t from-${riskColor}-600 to-${riskColor}-400 rounded-t`}
+                             style={{ height: `${(count / maxHourCount) * 100}%`, minHeight: count > 0 ? '4px' : '0' }}
+                           ></div>
+                         </div>
+                       ))}
+                     </div>
+                     <div className="flex justify-between text-xs text-slate-500 mt-2">
+                       <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+                     </div>
+                   </div>
+                   
+                   {/* 风险评估 */}
+                   <div className="bg-cyber-900/60 rounded-xl p-4 border border-cyber-700/50">
+                     <h4 className="text-white font-bold mb-4">风险评估</h4>
+                     <div className="space-y-3">
+                       <div className="flex justify-between items-center">
+                         <span className="text-slate-400 text-sm">威胁等级</span>
+                         <span className={`px-2 py-1 rounded text-xs font-bold ${
+                           selectedRiskLevel === RiskLevel.HIGH ? 'bg-red-500/20 text-red-400' :
+                           selectedRiskLevel === RiskLevel.MEDIUM ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'
+                         }`}>
+                           {selectedRiskLevel === RiskLevel.HIGH ? '高危' : selectedRiskLevel === RiskLevel.MEDIUM ? '中危' : '低危'}
+                         </span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                         <span className="text-slate-400 text-sm">攻击源数</span>
+                         <span className="text-white font-mono">{Object.keys(sourceIpCount).length}</span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                         <span className="text-slate-400 text-sm">受影响目标</span>
+                         <span className="text-white font-mono">{Object.keys(targetIpCount).length}</span>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* IP分析 */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   {/* Top 攻击源IP */}
+                   <div className="bg-cyber-900/60 rounded-xl p-4 border border-cyber-700/50">
+                     <h4 className="text-white font-bold mb-4 flex items-center gap-2">
+                       <AlertTriangle size={16} className="text-red-400" /> Top 攻击源IP
+                     </h4>
+                     <div className="space-y-2">
+                       {topSourceIps.length > 0 ? topSourceIps.map(([ip, count], i) => (
+                         <div key={ip} className="flex items-center justify-between p-2 bg-black/30 rounded-lg">
+                           <div className="flex items-center gap-2">
+                             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-red-500 text-white' : 'bg-cyber-700 text-slate-400'}`}>{i + 1}</span>
+                             <span className="font-mono text-sm text-slate-300">{ip}</span>
+                           </div>
+                           <span className={`font-mono text-sm text-${riskColor}-400`}>{count}次</span>
+                         </div>
+                       )) : <p className="text-slate-500 text-sm text-center py-4">暂无数据</p>}
+                     </div>
+                   </div>
+                   
+                   {/* Top 受攻击目标 */}
+                   <div className="bg-cyber-900/60 rounded-xl p-4 border border-cyber-700/50">
+                     <h4 className="text-white font-bold mb-4 flex items-center gap-2">
+                       <Eye size={16} className="text-orange-400" /> Top 受攻击目标
+                     </h4>
+                     <div className="space-y-2">
+                       {topTargetIps.length > 0 ? topTargetIps.map(([ip, count], i) => (
+                         <div key={ip} className="flex items-center justify-between p-2 bg-black/30 rounded-lg">
+                           <div className="flex items-center gap-2">
+                             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-orange-500 text-white' : 'bg-cyber-700 text-slate-400'}`}>{i + 1}</span>
+                             <span className="font-mono text-sm text-slate-300">{ip}</span>
+                           </div>
+                           <span className="font-mono text-sm text-orange-400">{count}次</span>
+                         </div>
+                       )) : <p className="text-slate-500 text-sm text-center py-4">暂无数据</p>}
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* 查看详细数据按钮 */}
+                 <button
+                   onClick={() => setViewMode('attackTypeDetail')}
+                   className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-${riskColor}-600 to-${riskColor}-500 hover:from-${riskColor}-500 hover:to-${riskColor}-400 text-white`}
+                 >
+                   <List size={20} /> 查看 {totalCount} 条详细攻击记录
+                   <ChevronRight size={20} />
+                 </button>
+               </>
+             );
+           })()}
+         </div>
+       )}
+
+       {/* 列表区域 - 总览或攻击类型详情时显示 */}
        <div 
          ref={scrollContainerRef}
-         className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar relative min-h-[400px]"
+         className={`flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar relative min-h-[400px] ${(viewMode === 'riskLevel' || viewMode === 'attackTypeOverview') ? 'hidden' : ''}`}
        >
          {/* Loading Skeleton */}
          {loading && (
@@ -1043,8 +1356,16 @@ const ThreatAlerts: React.FC = () => {
            </div>
          )}
 
-         {/* Threat List */}
-         {!loading && threats.map(threat => (
+         {/* Threat List - 根据视图模式过滤 */}
+         {!loading && threats
+           .filter(threat => {
+             if (viewMode === 'overview') return true;
+             if (viewMode === 'attackTypeDetail' && selectedRiskLevel && selectedAttackType) {
+               return threat.riskLevel === selectedRiskLevel && threat.type === selectedAttackType;
+             }
+             return true;
+           })
+           .map(threat => (
            <div key={threat.id} className={`bg-cyber-800 border ${
              threat.riskLevel === RiskLevel.HIGH ? 'border-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.1)]' : 
              threat.riskLevel === RiskLevel.MEDIUM ? 'border-orange-500/50' : 'border-cyber-700'

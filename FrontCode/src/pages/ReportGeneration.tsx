@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, Loader2, CheckCircle, Terminal, Eye, Download, History, ChevronRight, X, Edit2, Trash2, Save, XCircle } from 'lucide-react';
+import { FileText, Calendar, Loader2, CheckCircle, Terminal, Eye, Download, History, ChevronRight, X, Edit2, Trash2, Save, XCircle, Sparkles } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import { ReportService } from '../services/connector';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -269,18 +270,47 @@ const ReportGeneration: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="p-4 bg-gradient-to-br from-cyber-accent to-blue-600 rounded-2xl shadow-lg shadow-cyber-accent/20">
-           <FileText className="text-white" size={32} />
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader title="智能威胁报告引擎" subtitle="利用生成式 AI 自动化分析安全日志并生成决策报告" />
+
+      {/* 统计卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(0,20,40,0.95) 0%, rgba(0,40,60,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-cyan-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-cyan-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center gap-4">
+            <FileText size={28} className="text-cyan-400" />
+            <div>
+              <p className="text-4xl font-mono font-bold text-white">{reportHistory.length}</p>
+              <p className="text-sm text-slate-400 mt-1">历史报告</p>
+            </div>
+          </div>
         </div>
-        <div>
-           <h2 className="text-2xl font-bold text-white tracking-wide">智能威胁报告引擎</h2>
-           <p className="text-slate-400">利用生成式 AI 自动化分析安全日志并生成决策报告。</p>
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(20,0,40,0.95) 0%, rgba(40,0,60,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-purple-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-purple-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center gap-4">
+            <Sparkles size={28} className="text-purple-400" />
+            <div>
+              <p className="text-4xl font-mono font-bold text-purple-400">{isGenerating ? '生成中' : 'Ready'}</p>
+              <p className="text-sm text-slate-400 mt-1">AI 引擎状态</p>
+            </div>
+          </div>
+        </div>
+        <div className="relative rounded-2xl p-5 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(0,30,20,0.95) 0%, rgba(0,50,30,0.9) 100%)'}}>
+          <div className="absolute inset-0 rounded-2xl border border-emerald-500/30"></div>
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-emerald-500/20 rounded-full blur-2xl"></div>
+          <div className="relative z-10 flex items-center gap-4">
+            <CheckCircle size={28} className="text-emerald-400" />
+            <div>
+              <p className="text-4xl font-mono font-bold text-emerald-400">{generatedContent ? '已生成' : '待生成'}</p>
+              <p className="text-sm text-slate-400 mt-1">当前报告</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Config Panel */}
         <div className="lg:col-span-1 space-y-6">
            <div className="glass-panel p-6 rounded-xl space-y-6">

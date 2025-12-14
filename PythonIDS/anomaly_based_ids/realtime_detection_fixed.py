@@ -388,7 +388,7 @@ def calculate_severity(attack_type, confidence, is_known_attack, real_score, flo
     
     attack_type_str = str(attack_type)
     
-    # 【关键修改】所有未知攻击都视为高危告警（severity 4-5）
+    # 【修改】未知攻击根据置信度和特征判定严重程度
     if "Unknown Attack" in attack_type_str or "UA" in attack_type_str:
         # 未知攻击根据特征和真实度得分判定严重程度
         if flow_stats:
@@ -398,15 +398,19 @@ def calculate_severity(attack_type, confidence, is_known_attack, real_score, flo
             packets_per_s = total_packets / duration
             bytes_per_s = total_bytes / duration
             
-            # 如果流量特征明显异常，视为最高危
+            # 如果流量特征明显异常，视为高危
             if packets_per_s > 1000 or bytes_per_s > 1000000:  # 每秒1000包或1MB
                 return 5  # 最高危
             elif packets_per_s > 500 or bytes_per_s > 500000:  # 每秒500包或500KB
                 return 4  # 高危
-        # 未知攻击默认都是高危
-        if real_score <= -0.2:  # 降低阈值，只有非常不真实的才视为最高危
-            return 5  # 最高危（真实度得分很低）
-        return 2  # 低危（普通未知攻击降级为低危，避免大量高危告警刷屏）
+        
+        # 根据置信度判定（提高阈值要求）
+        if confidence >= 0.9:  # 只有非常高置信度才算高危
+            return 4  # 高危
+        elif confidence >= 0.7:  # 中等置信度算中危
+            return 3  # 中危
+        else:
+            return 1  # 低危（低置信度的未知攻击，可能是误报）
     
     # 1. 高危攻击类型 + 高置信度 = 最高危 (severity 5)
     if any(risk in attack_type_str for risk in high_risk_attacks):

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ZoomIn, ZoomOut, Crosshair, X, Monitor, Shield, Activity, Globe, List, AlertTriangle } from 'lucide-react';
+import { ZoomIn, ZoomOut, Crosshair, Globe, AlertTriangle } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 import { CHINA_GEO_NODES } from '../utils/constants';
 import * as echarts from 'echarts';
 import { TracingService } from '../services/connector';
@@ -262,36 +263,38 @@ const ThreatTracing: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col p-6 animate-fade-in relative overflow-hidden">
+    <div className="h-full flex flex-col animate-fade-in relative overflow-hidden space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6 z-10">
-        <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3 font-mono">
-            ATTACK.TRACING <span className="text-xs bg-cyber-accent/20 text-cyber-accent px-2 py-1 rounded font-sans animate-pulse">LIVE THREATS</span>
-          </h2>
-          <p className="text-slate-400 text-sm mt-1">全球威胁溯源可视化图谱</p>
-        </div>
-        
-        <div className="flex gap-4">
-          <div className="glass-panel px-4 py-2 rounded-lg flex items-center gap-3">
-             <div className="text-right">
-               <div className="text-xs text-slate-500 uppercase">Active Nodes</div>
-               <div className="text-xl font-bold text-cyber-accent font-mono">{CHINA_GEO_NODES.length}</div>
+      <PageHeader 
+        title="攻击溯源分析" 
+        subtitle="全球威胁溯源可视化图谱" 
+        showLive 
+        liveText="追踪中"
+      >
+        <div className="flex gap-3">
+          <div className="relative rounded-xl px-4 py-2.5 flex items-center gap-3 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(0,30,40,0.95) 0%, rgba(0,50,60,0.9) 100%)'}}>
+             <div className="absolute inset-0 rounded-xl border border-cyan-500/30"></div>
+             <Globe size={20} className="text-cyan-400 relative z-10" />
+             <div className="relative z-10">
+               <div className="text-[10px] text-slate-500 uppercase">监控节点</div>
+               <div className="text-lg font-bold text-cyan-400 font-mono">{CHINA_GEO_NODES.length}</div>
              </div>
-             <Globe className="text-cyber-accent opacity-50" />
           </div>
-          <div className="glass-panel px-4 py-2 rounded-lg flex items-center gap-3">
-             <div className="text-right">
-               <div className="text-xs text-slate-500 uppercase">Tracing Events</div>
-               <div className="text-xl font-bold text-red-400 font-mono">{tracingEvents.length}</div>
+          <div className="relative rounded-xl px-4 py-2.5 flex items-center gap-3 overflow-hidden" style={{background: 'linear-gradient(145deg, rgba(40,0,20,0.95) 0%, rgba(60,0,30,0.9) 100%)'}}>
+             <div className="absolute inset-0 rounded-xl border border-red-500/30"></div>
+             <AlertTriangle size={20} className="text-red-400 relative z-10" />
+             <div className="relative z-10">
+               <div className="text-[10px] text-slate-500 uppercase">溯源事件</div>
+               <div className="text-lg font-bold text-red-400 font-mono">{tracingEvents.length}</div>
              </div>
-             <Activity className="text-red-400 opacity-50" />
           </div>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Main Content Area */}
-      <div className="flex-1 relative rounded-2xl border border-cyber-800 bg-cyber-950/50 backdrop-blur-sm overflow-hidden flex">
+      <div className="flex-1 relative rounded-2xl overflow-hidden flex" style={{background: 'linear-gradient(145deg, rgba(0,5,15,0.98) 0%, rgba(0,15,25,0.95) 100%)'}}>
+        <div className="absolute inset-0 rounded-2xl border border-cyan-500/20"></div>
+        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
         
         {/* Map Container */}
         <div className="flex-1 relative">
