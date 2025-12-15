@@ -1,154 +1,142 @@
 @echo off
 cd /d "%~dp0"
 chcp 65001 >nul
-title Zhilian2025 Unified Launcher
+title 御链天鉴 - 一键启动
 color 0B
 
 echo ==============================================================================
 echo.
-echo     YY   YY  UU   UU  LL      II   AA    NN   NN   2222   0000   2222   55555
-echo      YY YY   UU   UU  LL      II  AAAA   NNN  NN  2    2 0    0 2    2  5
-echo       YYY    UU   UU  LL      II AA  AA  NN N NN      2  0    0     2   5555
-echo        Y     UU   UU  LL      II AAAAAA  NN  NNN    2    0    0   2        5 
-echo        Y      UUUUU   LLLLLL  II AA  AA  NN   NN  22222   0000  22222  55555
+echo   ██╗   ██╗██╗   ██╗██╗     ██╗ █████╗ ███╗   ██╗    ██████╗  ██████╗ ██████╗ █████╗ 
+echo   ╚██╗ ██╔╝██║   ██║██║     ██║██╔══██╗████╗  ██║    ╚════██╗██╔═████╗╚════██╗██╔══██╗
+echo    ╚████╔╝ ██║   ██║██║     ██║███████║██╔██╗ ██║     █████╔╝██║██╔██║ █████╔╝███████║
+echo     ╚██╔╝  ██║   ██║██║     ██║██╔══██║██║╚██╗██║    ██╔═══╝ ████╔╝██║██╔═══╝ ╚════██║
+echo      ██║   ╚██████╔╝███████╗██║██║  ██║██║ ╚████║    ███████╗╚██████╔╝███████╗     ██║
+echo      ╚═╝    ╚═════╝ ╚══════╝╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝    ╚══════╝ ╚═════╝ ╚══════╝     ╚═╝
 echo.
-echo                          Cyber Security Platform 2025
-echo                             One-Click Deployment
+echo                      网络安全智能分析及溯源系统 v1.3.0
+echo                           One-Click Deployment
 echo.
 echo ==============================================================================
 echo.
 
 :: ==============================================================================
-:: 0. Environment Check
+:: 环境检查
 :: ==============================================================================
-echo [INFO] Checking Environment Prerequisites...
+echo [检查] 正在检查运行环境...
+echo.
 
-where wsl >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] WSL ^(Windows Subsystem for Linux^) is not found in PATH.
-    echo         Please install WSL to run the Blockchain infrastructure.
-    pause
-    exit /b 1
-) else (
-    echo [OK] WSL found.
-)
+set JAVA_OK=0
+set NPM_OK=0
+set PYTHON_OK=0
 
 where java >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Java ^(JDK^) is not found in PATH.
-
-    pause
-    exit /b 1
+if %errorlevel% equ 0 (
+    echo   [√] Java 已安装
+    set JAVA_OK=1
 ) else (
-    echo [OK] Java found.
-)
-
-where mvn >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Maven is not found in PATH.
-    echo         Please install Maven and add it to PATH.
-    pause
-    exit /b 1
-) else (
-    echo [OK] Maven found.
+    echo   [×] Java 未找到，后端无法启动
 )
 
 where npm >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Node.js ^(npm^) is not found in PATH.
-    echo         Please install Node.js LTS and add it to PATH.
-    pause
-    exit /b 1
+if %errorlevel% equ 0 (
+    echo   [√] Node.js/npm 已安装
+    set NPM_OK=1
 ) else (
-    echo [OK] Node.js ^(npm^) found.
+    echo   [×] npm 未找到，前端无法启动
 )
 
 where python >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [ERROR] Python is not found in PATH.
-    echo         Please install Python 3.8+ and add it to PATH.
-    pause
-    exit /b 1
+if %errorlevel% equ 0 (
+    echo   [√] Python 已安装
+    set PYTHON_OK=1
 ) else (
-    echo [OK] Python found.
+    echo   [×] Python 未找到，IDS引擎无法启动
 )
-
-echo.
-echo [INFO] All prerequisites checked. Starting deployment sequence...
-echo.
-
-:: ==============================================================================
-:: 1. Start Blockchain Infrastructure (WSL)
-:: ==============================================================================
-echo [1/5] Blockchain Infrastructure Setup
-echo.
-echo [WARNING] Deploying the blockchain network will RESET the ledger data!
-echo.
-set /p DEPLOY_CHAIN="Do you want to (re)deploy the Hyperledger Fabric Network? (Y/N): "
-if /i "%DEPLOY_CHAIN%"=="Y" (
-    echo [INFO] Starting Hyperledger Fabric Network via WSL...
-    echo        Please ensure Docker Desktop is running.
-    wsl -e bash ./Zhilian_Install_Package/scripts/start_infra.sh
-) else (
-    echo [INFO] Skipping blockchain network deployment.
-)
-
-:: ==============================================================================
-:: 2. Start Blockchain Middleware (Java)
-:: ==============================================================================
-echo [2/5] Launching Blockchain Middleware...
-echo       - Port: 8080
-echo       - Service: Smart Contract Interface
-start "Backend Blockchain" /min /D "%~dp0\backend" cmd /k "mvn spring-boot:run && echo 'Middleware stopped. Press Enter to exit...' && pause"
-
-:: ==============================================================================
-:: 3. Start Backend Application (Java)
-:: ==============================================================================
-echo [3/5] Launching Backend Application...
-echo       - Port: 8081
-echo       - Service: Threat Analysis & API
-start "BackCode" /min /D "%~dp0\BackCode" cmd /k "mvn spring-boot:run && echo 'Backend stopped. Press Enter to exit...' && pause"
-
-:: ==============================================================================
-:: 4. Start Frontend Dashboard (Vue/React + Vite)
-:: ==============================================================================
-echo [4/5] Launching Frontend Dashboard...
-echo       - Port: 5173
-echo       - Installing dependencies (if needed)...
-echo       - Starting Dev Server...
-start "Frontend Dashboard" /D "%~dp0\FrontCode" cmd /k "title Frontend Dashboard && echo Installing dependencies... && npm install && echo Starting Vite Server... && npm run dev"
-
-:: ==============================================================================
-:: 5. Start IDS Engines & Agents (Python)
-:: ==============================================================================
-echo [5/5] Launching Security Engines...
-echo       - Installing Python dependencies...
-
-:: Install Python deps globally (or create venv if preferred, but keeping it simple for now)
-echo       (Installing requirements.txt in background...)
-start /wait /min /D "%~dp0" cmd /c "pip install -r PythonIDS/requirements.txt"
-
-echo       - Starting Anomaly Detection Engine (ML IDS)...
-start "ML IDS Engine" /D "%~dp0" cmd /k "title ML IDS Engine && python PythonIDS/anomaly_based_ids/realtime_detection_fixed.py"
-
-echo       - Starting HIDS Agent (Host Monitor) [Requesting Admin Privileges]...
-powershell -Command "Start-Process cmd -ArgumentList '/k chcp 65001 && title HIDS Agent && cd /d \"%~dp0.\" && python PythonIDS/hids_agent/agent.py' -Verb RunAs"
-
-:: Optional Rule Based IDS
-:: start "Rule IDS" /D "%~dp0" cmd /k "title Rule Based IDS && python RuleBasedIDS/mini_snort_pro.py"
 
 echo.
 echo ==============================================================================
 echo.
 
-echo.
-echo Service Dashboard:
-echo  - Frontend:   http://localhost:5173 (or as shown in Frontend window)
-echo  - Backend:    http://localhost:8081
-echo  - Middleware: http://localhost:8080 (Verify port in application.yml)
-echo.
-echo Please check each terminal window for specific logs or errors.
-echo DO NOT CLOSE this window unless you want to stop the orchestration context.
+:: ==============================================================================
+:: 1. 启动主后端 BackCode (Spring Boot - 端口 8081)
+:: ==============================================================================
+if %JAVA_OK%==1 (
+    echo [1/4] 启动主后端服务 BackCode...
+    echo       端口: 8081
+    echo       路径: BackCode/
+    
+    :: 检查 mvn 是否在 PATH 中
+    where mvn >nul 2>nul
+    if %errorlevel% equ 0 (
+        start "BackCode - 8081" /D "%~dp0BackCode" cmd /k "title 主后端服务 [8081] && mvn spring-boot:run"
+    ) else (
+        :: 使用 IntelliJ IDEA 自带的 Maven
+        if exist "E:\IntelliJ IDEA 2024.2.4\plugins\maven\lib\maven3\bin\mvn.cmd" (
+            start "BackCode - 8081" /D "%~dp0BackCode" cmd /k "title 主后端服务 [8081] && \"E:\IntelliJ IDEA 2024.2.4\plugins\maven\lib\maven3\bin\mvn.cmd\" spring-boot:run"
+        ) else (
+            echo   [!] 未找到 Maven，请手动启动后端
+        )
+    )
+    timeout /t 3 >nul
+) else (
+    echo [1/4] 跳过后端 - Java 未安装
+)
+
+:: ==============================================================================
+:: 2. 启动前端 (Vite - 端口 5173)
+:: ==============================================================================
+if %NPM_OK%==1 (
+    echo [2/4] 启动前端服务...
+    echo       端口: 5173
+    echo       路径: FrontCode/
+    start "Frontend - 5173" /D "%~dp0FrontCode" cmd /k "title 前端服务 [5173] && npm install && npm run dev"
+    timeout /t 2 >nul
+) else (
+    echo [2/4] 跳过前端 - npm 未安装
+)
+
+:: ==============================================================================
+:: 3. 启动 NIDS 引擎 (Python)
+:: ==============================================================================
+if %PYTHON_OK%==1 (
+    echo [3/4] 启动 NIDS 网络入侵检测引擎...
+    echo       路径: PythonIDS/anomaly_based_ids/
+    start "NIDS Engine" /D "%~dp0" cmd /k "title NIDS引擎 && python PythonIDS/anomaly_based_ids/realtime_detection_fixed.py"
+    timeout /t 1 >nul
+) else (
+    echo [3/4] 跳过 NIDS - Python 未安装
+)
+
+:: ==============================================================================
+:: 4. 启动 HIDS 代理 (Python)
+:: ==============================================================================
+if %PYTHON_OK%==1 (
+    echo [4/4] 启动 HIDS 主机监控代理...
+    echo       路径: hids_agent.py
+    start "HIDS Agent" /D "%~dp0" cmd /k "title HIDS代理 && python hids_agent.py"
+) else (
+    echo [4/4] 跳过 HIDS - Python 未安装
+)
+
 echo.
 echo ==============================================================================
+echo.
+echo   启动完成！请等待各服务初始化...
+echo.
+echo   服务地址:
+echo   ┌─────────────────────────────────────────────────────┐
+echo   │  前端界面:   http://localhost:5173                 │
+echo   │  后端API:    http://localhost:8081/api             │
+echo   │  WebSocket:  ws://localhost:8081/ids/stream        │
+echo   └─────────────────────────────────────────────────────┘
+echo.
+echo   默认账号: admin / admin123
+echo.
+echo   提示: 
+echo   - 请在各终端窗口查看详细日志
+echo   - 关闭此窗口不会停止已启动的服务
+echo   - 停止服务请关闭对应的终端窗口
+echo.
+echo ==============================================================================
+echo.
 pause

@@ -19,8 +19,8 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class AsyncService {
 
-    @Autowired
-    private Contract contract;
+    @Autowired(required = false)
+    private Contract contract;  // 可选：仅当 fabric.enabled=true 时注入
 
     @Autowired
     private SimpMessagingTemplate template;
@@ -69,6 +69,16 @@ public class AsyncService {
     private void processBatchTransaction(List<Map<String, String>> batch) {
         try {
             System.out.println(">>> [批量上链] 正在打包 " + batch.size() + " 条数据...");
+            
+            // 检查区块链服务是否启用
+            if (contract == null) {
+                System.out.println("⚠️ [跳过] 区块链服务未启用，数据仅打印不上链");
+                for (Map<String, String> item : batch) {
+                    System.out.println("   -> 模拟上链: " + item.get("eventID"));
+                }
+                return;
+            }
+            
             long t0 = System.nanoTime();
             String batchJson = JSON.toJSONString(batch);
             byte[] result = contract.submitTransaction("submitEvidenceBatch", batchJson);

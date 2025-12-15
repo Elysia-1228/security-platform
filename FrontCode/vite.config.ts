@@ -25,16 +25,16 @@ export default defineConfig(({ mode }) => {
       'process.env.API_KEY': JSON.stringify(env.API_KEY || ''),
     },
     server: {
-      port: 3000,
+      port: 5173,
       proxy: {
         // 开发环境代理配置：解决浏览器的同源策略 (CORS) 限制
-        // 当前端请求 /api/xxx 时，Vite 会将其转发到 env.VITE_API_BASE_URL
+        // 当前端请求 /api/xxx 时，Vite 会将其转发到后端
         '/api': {
-          target: 'http://localhost:8081', // Backnode runs on 8081
+          target: 'http://localhost:8081', // BackCode 主后端端口
           changeOrigin: true,
           // rewrite: (path) => path.replace(/^\/api/, '') // 后端接口本身包含 /api 前缀，无需重写
         },
-        // WebSocket 代理示例
+        // WebSocket 代理
         '/ids/stream': {
           target: env.VITE_IDS_WS_URL || 'ws://localhost:8081',
           ws: true,

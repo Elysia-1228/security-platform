@@ -16,8 +16,8 @@ import java.util.HashMap;
 @RequestMapping("/api")
 public class BlockchainController {
 
-    @Autowired
-    private Contract contract;
+    @Autowired(required = false)
+    private Contract contract;  // 可选：仅当 fabric.enabled=true 时注入
 
     @Autowired
     private AsyncService asyncService;
@@ -40,6 +40,11 @@ public class BlockchainController {
     @GetMapping("/evidence/{id}")
     public Map<String, Object> getEvidence(@PathVariable String id) {
         Map<String, Object> response = new HashMap<>();
+        if (contract == null) {
+            response.put("status", "error");
+            response.put("message", "区块链服务未启用");
+            return response;
+        }
         try {
             System.out.println(">>> 正在查询: " + id);
             byte[] result = contract.evaluateTransaction("getEvidenceByEventID", id);
@@ -70,6 +75,11 @@ public class BlockchainController {
     @PostMapping("/verify")
     public Map<String, Object> verifyEvidence(@RequestBody Map<String, String> payload) {
         Map<String, Object> response = new HashMap<>();
+        if (contract == null) {
+            response.put("status", "error");
+            response.put("message", "区块链服务未启用");
+            return response;
+        }
         try {
             String id = payload.get("eventID");
             String clientHash = payload.get("dataHash"); // 前端传来的“本地”哈希
@@ -157,6 +167,11 @@ public class BlockchainController {
     @GetMapping("/chain/list/{type}")
     public Map<String, Object> queryByType(@PathVariable String type) {
         Map<String, Object> response = new HashMap<>();
+        if (contract == null) {
+            response.put("status", "error");
+            response.put("message", "区块链服务未启用");
+            return response;
+        }
         try {
             // 需要合约支持 queryEvidenceByType 方法 (Range Query实现)
             byte[] result = contract.evaluateTransaction("queryEvidenceByType", type);

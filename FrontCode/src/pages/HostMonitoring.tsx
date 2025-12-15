@@ -581,7 +581,14 @@ const HostMonitoring: React.FC = () => {
                   </defs>
                   <CartesianGrid stroke="#0c4a6e" strokeDasharray="3 3" vertical={false} opacity={0.5} />
                   <XAxis dataKey="time" hide />
-                  <YAxis stroke="#0ea5e9" fontSize={14} tickLine={false} axisLine={false} />
+                  <YAxis 
+                    stroke="#0ea5e9" 
+                    fontSize={14} 
+                    tickLine={false} 
+                    axisLine={false}
+                    domain={['dataMin - 100', 'dataMax + 100']}
+                    tickFormatter={(v) => v.toLocaleString()}
+                  />
                   <Tooltip 
                      contentStyle={{ backgroundColor: 'rgba(0,20,40,0.95)', borderColor: '#0ea5e9', borderRadius: '12px' }}
                      itemStyle={{ fontWeight: 'bold', color: '#00ffff' }}

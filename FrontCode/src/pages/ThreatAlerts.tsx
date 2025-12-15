@@ -958,7 +958,7 @@ const ThreatAlerts: React.FC = () => {
       }
     } catch (error) {
       console.error('威胁溯源分析失败:', error);
-      setTraceResult(`分析请求失败: ${error instanceof Error ? error.message : '未知错误'}\n\n请确保:\n1. 后端服务正在运行 (http://127.0.0.1:8081)\n2. Adv-SecGPT 智能体服务正在运行 (http://10.138.50.151:8000)`);
+      setTraceResult(`分析请求失败: ${error instanceof Error ? error.message : '未知错误'}\n\n请确保:\n1. 后端服务正在运行 (http://127.0.0.1:8081)\n2. Adv-SecGPT 智能体服务正在运行`);
     } finally {
       setTraceLoading(false);
     }

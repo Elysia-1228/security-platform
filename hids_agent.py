@@ -20,9 +20,16 @@ BACKEND_URL = "http://127.0.0.1:8081/api/host/monitor/report"
 REPORT_INTERVAL = 3  # 上报间隔（秒）
 
 def get_local_ip():
-    """获取本机IP地址"""
-    # 直接使用你的真实局域网IP
-    return "192.168.31.254"
+    """获取本机真实IP地址"""
+    try:
+        # 创建UDP socket获取真实出口IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except:
+        return socket.gethostbyname(socket.gethostname())
 
 def get_cpu_model():
     """获取真实的CPU型号"""
